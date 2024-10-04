@@ -1,0 +1,3 @@
+snap-helpers @ git+https://github.com/albertodonato/snap-helpers
+jinja2
+pydantic

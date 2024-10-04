@@ -1,0 +1,76 @@
+name: cinder-volume
+base: core22
+version: "2024.1"
+summary: Base cinder-volume snap
+description: |
+  This snap is a base snap for cinder-volume. It is not intended to be used
+  directly, but to provide a base for other snaps that need to include
+  cinder-volume.
+
+grade: devel
+confinement: devmode
+
+environment:
+  LC_ALL: C
+  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
+  # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
+  PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages
+
+package-repositories:
+  - type: apt
+    cloud: caracal
+    priority: always
+
+apps:
+  cinder-volume:
+    command: bin/cinder_volume
+    daemon: simple
+    plugs:
+      - network
+      - network-bind
+      - mount-observe
+      - block-devices
+
+parts:
+  openstack:
+    plugin: nil
+    stage-packages:
+      # - sudo
+      - python3-cinder
+      - cinder-volume
+      - sysfsutils
+      - python3-rtslib-fb
+      - python3-minimal
+      - python3-tz
+    override-build: |
+      craftctl default
+      # purge some dangling symlinks
+      rm -rf $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
+      rm -rf $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
+
+  cinder-volume:
+    after: [openstack]
+    plugin: python
+    source: .
+    build-packages:
+      - git
+    python-requirements:
+      - requirements.txt
+    override-build: |
+      craftctl default
+      snap-helpers write-hooks
+
+  bin:
+    source: bin/
+    plugin: dump
+    organize:
+      '*': usr/bin/
+
+hooks:
+  install:
+    plugs: [network]
+  configure:
+    plugs:
+      - network
+      - network-control
+      - firewall-control
