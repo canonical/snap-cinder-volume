@@ -22,6 +22,8 @@ from snaphelpers import Snap
 
 from . import log
 
+_SERVICES: list[typing.Type["OpenStackService"]] = []
+
 
 def entry_point(service_class):
     """Entry point wrapper for services."""
@@ -30,14 +32,26 @@ def entry_point(service_class):
     sys.exit(exit_code)
 
 
+def services() -> typing.Sequence[typing.Type["OpenStackService"]]:
+    return _SERVICES
+
+
 class OpenStackService:
     """Base service object for OpenStack daemons."""
 
+    # only fully specified configuration files will trigger a restart
+    # on modification
     configuration_files: typing.Sequence[Path] = []
     configuration_directories: typing.Sequence[Path] = []
     extra_args: typing.Sequence[str] = []
 
+    name: str
     executable: Path
+
+    def __init_subclass__(cls, **kwargs):
+        """Register inherited classes."""
+        super().__init_subclass__(**kwargs)
+        _SERVICES.append(cls)
 
     def run(self, snap: Snap) -> int:
         """Runs the OpenStack service.
@@ -84,6 +98,8 @@ class CinderVolume(OpenStackService):
         Path("etc/cinder/rootwrap.conf"),
     ]
     configuration_directories = [Path("etc/cinder/cinder.conf.d")]
+    name = "cinder-volume"
+    executable = Path("usr/bin/cinder-volume")
 
 
 cinder_volume = functools.partial(entry_point, CinderVolume)

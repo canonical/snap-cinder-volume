@@ -11,30 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
-import typing
 
 
-Locations = typing.Literal["common", "data"]
-
-
-class Template:
-    src: str
-    dest: Path
-    location: Locations
-
-    def __init__(self, src: str, dest: Path, location: Locations = "common"):
-        self.src = src
-        self.dest = dest
-        self.location = location
-
-    def rel_path(self) -> Path:
-        return self.dest / self.src
-
-
-class CommonTemplate(Template):
-    location = "common"
-
-
-class DataTemplate(Template):
-    location = "data"
+class CinderError(Exception):
+    """Base class for all Cinder errors."""

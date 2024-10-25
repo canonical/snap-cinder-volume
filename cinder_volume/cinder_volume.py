@@ -20,13 +20,12 @@ from pathlib import Path
 import jinja2
 from snaphelpers import Snap
 
-from . import configuration, context, log, template
+from . import configuration, context, log, template, services
 
 ETC_CINDER = Path("etc/cinder")
 
 
 class CinderVolume:
-
     @classmethod
     def install_hook(cls, snap: Snap) -> None:
         log.setup_logging(snap.paths.common / "hooks.log")
@@ -46,22 +45,44 @@ class CinderVolume:
         modified = self.template(snap)
         self.start_services(snap, modified)
 
-    def start_services(self, snap: Snap, modified_files) -> None:
-        pass
+    def start_services(
+        self, snap: Snap, modified_tpl: typing.Sequence[template.Template]
+    ) -> None:
+        modified_files = set()
+        for tpl in modified_tpl:
+            modified_files.add(tpl.rel_path())
+        snap_services = snap.services.list()
+        for service in services.services():
+            snap_service = snap_services.get(service.name)
+            if not snap_service:
+                logging.warning("Service %s not found in snap services", service.name)
+                continue
+
+            common = modified_files.intersection(service.configuration_files)
+            if common:
+                logging.debug("Restarting service %s", service.name)
+                snap_service.restart()
+            else:
+                logging.debug("Starting service %s", service.name)
+                snap_service.start()
 
     def config_type(self):
         return configuration.Configuration
 
-    def get_config(self, snap: Snap) -> configuration.Configuration:
-        return self.config_type().model_validate(snap.config.get_options(*()).as_dict())
+    def get_config(self, snap: Snap) -> configuration.BaseConfiguration:
+        return self.config_type().model_validate(
+            snap.config.get_options(*self.config_type().model_fields.keys()).as_dict()
+        )
 
     def common_dirs(self) -> list[str]:
         """Directories to be created on the common path."""
-        return ["etc/cinder"]
+        return ["etc/cinder", "etc/cinder/cinder.conf.d"]
 
     def data_dirs(self) -> list[str]:
         """Directories to be created on the data path."""
-        return []
+        return [
+            "lib/cinder",
+        ]
 
     def template_files(self) -> list[template.Template]:
         """Files to be templated."""
@@ -69,6 +90,12 @@ class CinderVolume:
             template.CommonTemplate("cinder.conf", ETC_CINDER),
             template.CommonTemplate("rootwrap.conf", ETC_CINDER),
         ]
+
+    def backend_context(self, snap: Snap) -> context.CinderBackendContext:
+        """Instanciated backend context."""
+        return context.CinderBackendContext(
+            enabled_backends=["lvm-1"], backend_configs={"lvm-1": {}}
+        )
 
     def contexts(self, snap: Snap) -> list[context.Context]:
         """Contexts to be used in the templates."""
@@ -78,6 +105,7 @@ class CinderVolume:
                 context.ConfigContext(k, v)
                 for k, v in self.get_config(snap).model_dump().items()
             ),
+            self.backend_context(snap),
         ]
 
     def render_context(
@@ -123,13 +151,20 @@ class CinderVolume:
             file_name = f.src
             dest_dir: Path = getattr(snap.paths, f.location) / f.dest
             dest_dir.mkdir(parents=True, exist_ok=True)
-            dest_file = dest_dir / file_name
+            dest_file = dest_dir / file_name.removesuffix(".j2")
 
             original_hash = None
             if dest_file.exists():
                 original_hash = hash(dest_file.read_text())
 
-            rendered = env.get_template(f.src).render(**context)
+            tpl = None
+            try:
+                tpl = env.get_template(f.src)
+            except jinja2.exceptions.TemplateNotFound:
+                logging.debug("Template %s not found, trying with .j2", f.src)
+                tpl = env.get_template(f.src + ".j2")
+
+            rendered = tpl.render(**context)
 
             new_hash = hash(rendered)
 

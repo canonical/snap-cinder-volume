@@ -16,12 +16,15 @@ import typing
 
 from snaphelpers import Snap
 
+from . import error
+
 
 class Context:
     namespace: str
 
     def context(self) -> typing.Mapping[str, typing.Any]:
         return {}
+
 
 class ConfigContext(Context):
     def __init__(self, namespace: str, config: typing.Mapping[str, typing.Any]):
@@ -40,7 +43,30 @@ class SnapPathContext(Context):
 
     def context(self) -> typing.Mapping[str, typing.Any]:
         return {
-            name: getattr(self.snap.paths, "name") for name in self.snap.paths.__slots__
+            name: getattr(self.snap.paths, name) for name in self.snap.paths.__slots__
         }
 
 
+class CinderBackendContext(Context):
+    namespace = "cinder_backend"
+
+    def __init__(
+        self,
+        enabled_backends: list[str],
+        backend_configs: dict[str, dict[str, str]],
+    ):
+        self.enabled_backends = enabled_backends
+        self.backend_configs = backend_configs
+        if not enabled_backends:
+            raise error.CinderError("At least one backend must be enabled")
+        missing_backends = set(self.enabled_backends) - set(backend_configs.keys())
+        if missing_backends:
+            raise error.CinderError(
+                "Context missing configuration for backends: %s" % missing_backends
+            )
+
+    def context(self) -> typing.Mapping[str, typing.Any]:
+        return {
+            "enabled_backends": ",".join(self.enabled_backends),
+            "backend_configs": self.backend_configs,
+        }

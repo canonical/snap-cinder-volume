@@ -10,14 +10,15 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["cinder_volume"]
+packages = ["cinder_volume", "cinder_volume.scripts"]
 
 [tool.setuptools.package-data]
 cinder_volume = ["*.j2"]
 
 [project.scripts]
 cinder_volume = "cinder_volume.services:cinder_volume"
+cinder-snap-helpers = "cinder_volume.scripts.snap_helpers:script"
 
 [project.entry-points."snaphelpers.hooks"]
-install = "cinder_volume.cinder_volume:CinderVolume.install"
-configure = "cinder_volume.cinder_volume:CinderVolume.configure"
+install = "cinder_volume.cinder_volume:CinderVolume.install_hook"
+configure = "cinder_volume.cinder_volume:CinderVolume.configure_hook"

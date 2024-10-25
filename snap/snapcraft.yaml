@@ -13,8 +13,7 @@ confinement: devmode
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
-  # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
-  PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages
+  PYTHONPATH: $SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages::$PYTHONPATH
 
 package-repositories:
   - type: apt
@@ -22,9 +21,13 @@ package-repositories:
     priority: always
 
 apps:
-  cinder-volume:
+  cinder-volumeenable:
+    environment:
+      # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
+      PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages
     command: bin/cinder_volume
     daemon: simple
+    install-mode: disable
     plugs:
       - network
       - network-bind
@@ -35,7 +38,6 @@ parts:
   openstack:
     plugin: nil
     stage-packages:
-      # - sudo
       - python3-cinder
       - cinder-volume
       - sysfsutils
@@ -58,13 +60,13 @@ parts:
       - requirements.txt
     override-build: |
       craftctl default
-      snap-helpers write-hooks
+      cinder-snap-helpers write-hooks
 
   bin:
     source: bin/
     plugin: dump
     organize:
-      '*': usr/bin/
+      "*": usr/bin/
 
 hooks:
   install:

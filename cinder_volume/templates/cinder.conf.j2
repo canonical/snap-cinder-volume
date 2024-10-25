@@ -1,6 +1,6 @@
 ###############################################################################
 # [ WARNING ]
-# cinder-volume configuration file maintained by cinder-truenas-operator
+# cinder-volume configuration file maintained by a snap
 # local changes will be overwritten.
 ###############################################################################
 [DEFAULT]
@@ -10,20 +10,18 @@ debug = {{ settings.debug }}
 use_syslog = True
 auth_strategy = keystone
 state_path = {{ snap_paths.data }}/lib/cinder
-
 transport_url = {{ rabbitmq.url }}
-# rabbit://cinder-volume:password@10.206.54.241:5672/openstack
-
-enabled_backends = truenas-iscsi
-default_volume_type = ixsystems-iscsi
-
 cinder_internal_tenant_project_id = {{ cinder.project_id }}
 cinder_internal_tenant_user_id = {{ cinder.user_id }}
+default_volume_type = {{ cinder.default_volume_type }}
+{% if cinder.cluster is defined and cinder.cluster %}
+cluster = {{ cinder.cluster }}
+{% endif %}
+enabled_backends = {{ cinder_backend.enabled_backends }}
 
 
 [database]
 connection = {{ database.url }}
-#mysql+pymysql://relation-61_fd936cb4c14c4e-141:password@10.206.54.40:31095/cinder
 
 [oslo_messaging_rabbit]
 rabbit_quorum_queue = True
@@ -31,6 +29,15 @@ rabbit_quorum_queue = True
 [oslo_concurrency]
 lock_path = {{ snap_paths.common }}/lib/cinder/tmp
 
-# image_volume_cache_enabled = False
-# image_volume_cache_max_size_gb = {{ options.image_volume_cache_max_size_gb }}/
-# image_volume_cache_max_count = {{ options.image_volume_cache_max_count }}/
+[backend_defaults]
+image_volume_cache_enabled = {{ cinder.image_volume_cache_enabled }}
+image_volume_cache_max_size_gb = {{ cinder.image_volume_cache_max_size_gb }}
+image_volume_cache_max_count = {{ cinder.image_volume_cache_max_count }}
+target_helper = lioadm
+
+{% for name, config in cinder_backend.backend_configs.items() -%}
+[{{ name }}]
+{% for key, value in config.items() -%}
+{{ key }} = {{ value }}
+{% endfor -%}
+{% endfor %}
