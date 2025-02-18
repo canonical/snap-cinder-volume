@@ -9,7 +9,7 @@ api_paste_confg = {{ snap_paths.common }}/etc/cinder/api-paste.ini
 debug = {{ settings.debug }}
 use_syslog = True
 auth_strategy = keystone
-state_path = {{ snap_paths.data }}/lib/cinder
+state_path = {{ snap_paths.common }}/lib/cinder
 transport_url = {{ rabbitmq.url }}
 cinder_internal_tenant_project_id = {{ cinder.project_id }}
 cinder_internal_tenant_user_id = {{ cinder.user_id }}
@@ -17,7 +17,7 @@ default_volume_type = {{ cinder.default_volume_type }}
 {% if cinder.cluster is defined and cinder.cluster %}
 cluster = {{ cinder.cluster }}
 {% endif %}
-enabled_backends = {{ cinder_backend.enabled_backends }}
+enabled_backends = {{ cinder_backends.enabled_backends }}
 
 
 [database]
@@ -35,9 +35,14 @@ image_volume_cache_max_size_gb = {{ cinder.image_volume_cache_max_size_gb }}
 image_volume_cache_max_count = {{ cinder.image_volume_cache_max_count }}
 target_helper = lioadm
 
-{% for name, config in cinder_backend.backend_configs.items() -%}
+{% for name, context in cinder_backends.contexts.items() -%}
 [{{ name }}]
-{% for key, value in config.items() -%}
+{% for key, value in context.items() -%}
 {{ key }} = {{ value }}
 {% endfor -%}
 {% endfor %}
+
+{% if settings.enable_telemetry_notifications -%}
+[oslo_messaging_notifications]
+driver = messagingv2
+{%- endif %}

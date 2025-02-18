@@ -1,33 +1,28 @@
 name: cinder-volume
-base: core22
+base: core24
 version: "2024.1"
-summary: Base cinder-volume snap
+summary: cinder-volume in a snap
 description: |
-  This snap is a base snap for cinder-volume. It is not intended to be used
-  directly, but to provide a base for other snaps that need to include
-  cinder-volume.
+  This snap is a base snap for cinder-volume. It intended to be used
+  directly for supported plugins, but can be used a base for other snaps
+  that need to include cinder-volume.
 
 grade: devel
-confinement: devmode
+confinement: strict
 
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
-  PYTHONPATH: $SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages::$PYTHONPATH
-
-package-repositories:
-  - type: apt
-    cloud: caracal
-    priority: always
+  PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
 
 apps:
-  cinder-volumeenable:
+  cinder-volume:
     environment:
       # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
-      PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.10:$SNAP/usr/lib/python3.10/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.10:$SNAP/lib/python3.10/site-packages
+      PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
+      LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/ceph
     command: bin/cinder_volume
     daemon: simple
-    install-mode: disable
     plugs:
       - network
       - network-bind
@@ -44,11 +39,24 @@ parts:
       - python3-rtslib-fb
       - python3-minimal
       - python3-tz
+      - ceph-common
+      - nfs-common
+      - tgt
     override-build: |
       craftctl default
       # purge some dangling symlinks
       rm -rf $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
       rm -rf $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
+      # rewrite symlink
+      rm -rf $CRAFT_PART_INSTALL/usr/bin/iscsiadm
+    override-prime: |
+      craftctl default
+      target=$CRAFT_PRIME/usr/bin/iscsiadm
+      if [ -L "$target" ]; then
+        rm -f "$target"
+      fi
+      ln -s ../sbin/iscsiadm "$target"
+
 
   cinder-volume:
     after: [openstack]

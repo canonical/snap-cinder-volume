@@ -12,20 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import inspect
 import logging
 import typing
 from pathlib import Path
 
 import jinja2
+import pydantic
 from snaphelpers import Snap
 
-from . import configuration, context, log, template, services
+from . import configuration, context, error, log, services, template
 
 ETC_CINDER = Path("etc/cinder")
 
 
-class CinderVolume:
+CONF = typing.TypeVar("CONF", bound=configuration.BaseConfiguration)
+
+
+class CinderVolume(typing.Generic[CONF], abc.ABC):
+    def __init__(self) -> None:
+        self._contexts: typing.Sequence[context.Context] | None = None
+        self._backend_contexts: context.CinderBackendContexts | None = None
+
     @classmethod
     def install_hook(cls, snap: Snap) -> None:
         log.setup_logging(snap.paths.common / "hooks.log")
@@ -34,23 +43,37 @@ class CinderVolume:
     @classmethod
     def configure_hook(cls, snap: Snap) -> None:
         log.setup_logging(snap.paths.common / "hooks.log")
-        cls().configure(snap)
+        try:
+            cls().configure(snap)
+        except error.CinderError:
+            logging.warning("Configuration not complete", exc_info=True)
 
     def install(self, snap: Snap) -> None:
         self.setup_dirs(snap)
         self.template(snap)
 
     def configure(self, snap: Snap) -> None:
-        self.setup_dirs(snap)
+        backend_contexts = self.backend_contexts(snap)
+        self.setup_dirs(snap, backend_contexts)
         modified = self.template(snap)
-        self.start_services(snap, modified)
+        backend_tpls = []
+        for backend_context in backend_contexts.contexts.values():
+            backend_tpls.extend(backend_context.template_files())
+            backend_context.setup(snap)
+        self.start_services(snap, modified, backend_tpls)
 
     def start_services(
-        self, snap: Snap, modified_tpl: typing.Sequence[template.Template]
+        self,
+        snap: Snap,
+        modified_tpl: typing.Sequence[template.Template],
+        backend_tpls: typing.Sequence[template.Template],
     ) -> None:
-        modified_files = set()
+        modified_files: set[Path] = set()
         for tpl in modified_tpl:
             modified_files.add(tpl.rel_path())
+        backend_files: set[Path] = set()
+        for tpl in backend_tpls:
+            backend_files.add(tpl.rel_path())
         snap_services = snap.services.list()
         for service in services.services():
             snap_service = snap_services.get(service.name)
@@ -58,7 +81,9 @@ class CinderVolume:
                 logging.warning("Service %s not found in snap services", service.name)
                 continue
 
-            common = modified_files.intersection(service.configuration_files)
+            common = modified_files.intersection(
+                set(service.configuration_files) | backend_files
+            )
             if common:
                 logging.debug("Restarting service %s", service.name)
                 snap_service.restart()
@@ -66,22 +91,25 @@ class CinderVolume:
                 logging.debug("Starting service %s", service.name)
                 snap_service.start()
 
-    def config_type(self):
-        return configuration.Configuration
+    @abc.abstractmethod
+    def config_type(self) -> typing.Type[CONF]:
+        raise NotImplementedError
 
-    def get_config(self, snap: Snap) -> configuration.BaseConfiguration:
-        return self.config_type().model_validate(
-            snap.config.get_options(*self.config_type().model_fields.keys()).as_dict()
-        )
+    def get_config(self, snap: Snap) -> CONF:
+        keys = self.config_type().model_fields.keys()
+        try:
+            return self.config_type().model_validate(
+                snap.config.get_options(*keys).as_dict()
+            )
+        except pydantic.ValidationError as e:
+            raise error.CinderError("Invalid configuration") from e
 
-    def common_dirs(self) -> list[str]:
+    def directories(self) -> list[template.Directory]:
         """Directories to be created on the common path."""
-        return ["etc/cinder", "etc/cinder/cinder.conf.d"]
-
-    def data_dirs(self) -> list[str]:
-        """Directories to be created on the data path."""
         return [
-            "lib/cinder",
+            template.CommonDirectory("etc/cinder"),
+            template.CommonDirectory("etc/cinder/cinder.conf.d"),
+            template.CommonDirectory("lib/cinder"),
         ]
 
     def template_files(self) -> list[template.Template]:
@@ -91,39 +119,45 @@ class CinderVolume:
             template.CommonTemplate("rootwrap.conf", ETC_CINDER),
         ]
 
-    def backend_context(self, snap: Snap) -> context.CinderBackendContext:
+    @abc.abstractmethod
+    def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
         """Instanciated backend context."""
-        return context.CinderBackendContext(
-            enabled_backends=["lvm-1"], backend_configs={"lvm-1": {}}
-        )
+        raise NotImplementedError
 
-    def contexts(self, snap: Snap) -> list[context.Context]:
+    def contexts(self, snap: Snap) -> typing.Sequence[context.Context]:
         """Contexts to be used in the templates."""
-        return [
-            context.SnapPathContext(snap),
-            *(
-                context.ConfigContext(k, v)
-                for k, v in self.get_config(snap).model_dump().items()
-            ),
-            self.backend_context(snap),
-        ]
+        if self._contexts is None:
+            self._contexts = [
+                context.SnapPathContext(snap),
+                *(
+                    context.ConfigContext(k, v)
+                    for k, v in self.get_config(snap).model_dump().items()
+                ),
+            ]
+        return self._contexts
 
     def render_context(
         self, snap: Snap
-    ) -> typing.Mapping[str, typing.Mapping[str, str]]:
+    ) -> typing.MutableMapping[str, typing.Mapping[str, str]]:
         context = {}
         for ctx in self.contexts(snap):
             logging.debug("Adding context: %s", ctx.namespace)
             context[ctx.namespace] = ctx.context()
         return context
 
-    def setup_dirs(self, snap: Snap) -> None:
-        for d in self.common_dirs():
-            logging.debug("Creating directory: %s", d)
-            snap.paths.common.joinpath(d).mkdir(parents=True, exist_ok=True)
-        for d in self.data_dirs():
-            logging.debug("Creating directory: %s", d)
-            snap.paths.data.joinpath(d).mkdir(parents=True, exist_ok=True)
+    def setup_dirs(
+        self, snap: Snap, backend_contexts: context.CinderBackendContexts | None = None
+    ) -> None:
+        directories = self.directories()
+        if backend_contexts:
+            for backend_context in backend_contexts.contexts.values():
+                directories.extend(backend_context.directories())
+
+        for d in directories:
+            path: Path = getattr(snap.paths, d.location).joinpath(d.path)
+            logging.debug("Creating directory: %s", path)
+            path.mkdir(parents=True, exist_ok=True)
+            path.chmod(d.mode)
 
     def templates_search_path(self, snap: Snap) -> list[Path]:
         try:
@@ -137,9 +171,64 @@ class CinderVolume:
             Path(__file__).parent / "templates",
         ]
 
+    def _process_template(
+        self,
+        snap: Snap,
+        env: jinja2.Environment,
+        template: template.Template,
+        context: typing.Mapping[str, typing.Mapping[str, str]],
+    ) -> bool:
+        file_name = template.filename
+        dest_dir: Path = getattr(snap.paths, template.location) / template.dest
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_file = dest_dir / file_name.removesuffix(".j2")
+
+        original_hash = None
+        if dest_file.exists():
+            original_hash = hash(dest_file.read_text())
+
+        tpl = None
+        template_file = template.template()
+        try:
+            tpl = env.get_template(template_file)
+        except jinja2.exceptions.TemplateNotFound:
+            logging.debug("Template %s not found, trying with .j2", template_file)
+            tpl = env.get_template(template_file + ".j2")
+
+        rendered = tpl.render(**context)
+        if len(rendered) > 0 and rendered[-1] != "\n":
+            # ensure trailing new line
+            rendered += "\n"
+
+        new_hash = hash(rendered)
+
+        if original_hash == new_hash:
+            logging.debug("File %s has not changed, skipping", dest_file)
+            return False
+        logging.debug("File %s has changed, writing new content", dest_file)
+        dest_file.write_text(rendered)
+        dest_file.chmod(template.mode)
+        return True
+
+    def _render_specific_backend_configs(
+        self,
+        context: typing.Mapping[str, typing.Mapping[str, str]],
+        value: typing.Any,
+    ) -> typing.Any:
+        """Allow to render backend values with jinja2 templates."""
+        if isinstance(value, str):
+            return jinja2.Template(value).render(**context)
+        elif isinstance(value, dict):
+            return {
+                k: self._render_specific_backend_configs(context, v)
+                for k, v in value.items()
+            }
+        return value
+
     def template(self, snap: Snap) -> list[template.Template]:
         env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(searchpath=self.templates_search_path(snap))
+            loader=jinja2.FileSystemLoader(searchpath=self.templates_search_path(snap)),
+            keep_trailing_newline=True,
         )
         modified_templates: list[template.Template] = []
         try:
@@ -147,32 +236,42 @@ class CinderVolume:
         except Exception as e:
             logging.error("Failed to render context: %s", e)
             return modified_templates
-        for f in self.template_files():
-            file_name = f.src
-            dest_dir: Path = getattr(snap.paths, f.location) / f.dest
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            dest_file = dest_dir / file_name.removesuffix(".j2")
+        backend_contexts = self.backend_contexts(snap)
+        context[backend_contexts.namespace] = self._render_specific_backend_configs(
+            context, backend_contexts.context()
+        )
+        # process general templates
+        for tpl in self.template_files():
+            if self._process_template(snap, env, tpl, context):
+                modified_templates.append(tpl)
+        # process backend specific templates
+        for backend_context in backend_contexts.contexts.values():
+            context[backend_context.namespace] = backend_context.context()
+            for tpl in backend_context.template_files():
+                if self._process_template(snap, env, tpl, context):
+                    modified_templates.append(tpl)
+            context.pop(backend_context.namespace)
 
-            original_hash = None
-            if dest_file.exists():
-                original_hash = hash(dest_file.read_text())
-
-            tpl = None
-            try:
-                tpl = env.get_template(f.src)
-            except jinja2.exceptions.TemplateNotFound:
-                logging.debug("Template %s not found, trying with .j2", f.src)
-                tpl = env.get_template(f.src + ".j2")
-
-            rendered = tpl.render(**context)
-
-            new_hash = hash(rendered)
-
-            if original_hash == new_hash:
-                logging.debug("File %s not changed, skipping", dest_file)
-                continue
-            logging.debug("File %s changed, writing new content", dest_file)
-            modified_templates.append(f)
-            with dest_file.open("w") as fd:
-                fd.write(rendered)
         return modified_templates
+
+
+class GenericCinderVolume(CinderVolume[configuration.Configuration]):
+    def config_type(self) -> typing.Type[configuration.Configuration]:
+        return configuration.Configuration
+
+    def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
+        """Instanciated backend context."""
+        if self._backend_contexts is None:
+            try:
+                config = self.get_config(snap)
+            except pydantic.ValidationError as e:
+                raise error.CinderError("Invalid configuration") from e
+            backends = {
+                name: context.CephBackendContext(name, backend_config.model_dump())
+                for name, backend_config in config.ceph.items()
+            }
+            self._backend_contexts = context.CinderBackendContexts(
+                enabled_backends=list(backends.keys()),
+                contexts=backends,
+            )
+        return self._backend_contexts

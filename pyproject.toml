@@ -3,7 +3,7 @@ name = "cinder-volume"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
@@ -13,12 +13,12 @@ build-backend = "setuptools.build_meta"
 packages = ["cinder_volume", "cinder_volume.scripts"]
 
 [tool.setuptools.package-data]
-cinder_volume = ["*.j2"]
+cinder_volume = ["templates/*.j2"]
 
 [project.scripts]
 cinder_volume = "cinder_volume.services:cinder_volume"
 cinder-snap-helpers = "cinder_volume.scripts.snap_helpers:script"
 
 [project.entry-points."snaphelpers.hooks"]
-install = "cinder_volume.cinder_volume:CinderVolume.install_hook"
-configure = "cinder_volume.cinder_volume:CinderVolume.configure_hook"
+install = "cinder_volume.cinder_volume:GenericCinderVolume.install_hook"
+configure = "cinder_volume.cinder_volume:GenericCinderVolume.configure_hook"

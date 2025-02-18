@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Configuration module for the cinder-volume snap.
+
+This module holds the definition of all configuration options the snap
+takes as input from `snap set`.
+"""
+
 import pydantic
 import pydantic.alias_generators
 
@@ -50,6 +56,7 @@ class CinderConfiguration(ParentConfig):
 
 class Settings(ParentConfig):
     debug: bool = False
+    enable_telemetry_notifications: bool = False
 
 
 class BaseConfiguration(ParentConfig):
@@ -64,9 +71,48 @@ class BaseConfiguration(ParentConfig):
     cinder: CinderConfiguration
 
 
+class BaseBackendConfiguration(ParentConfig):
+    image_volume_cache_enabled: bool | None = None
+    image_volume_cache_max_size_gb: int | None = None
+    image_volume_cache_max_count: int | None = None
+    volume_dd_blocksize: int = 4096
+    volume_backend_name: str
+
+
+class CephConfiguration(BaseBackendConfiguration):
+    rbd_exclusive_cinder_pool: bool = True
+    report_discard_supported: bool = True
+    rbd_flatten_volume_from_snapshot: bool = False
+    auth: str = "cephx"
+    mon_hosts: str
+    rbd_pool: str
+    rbd_user: str
+    rbd_secret_uuid: str
+    rbd_key: str
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
     This class is specific to this snap and should not be used in
     downstream snaps.
     """
+
+    ceph: dict[str, CephConfiguration] = {}
+
+    @pydantic.field_validator("ceph")
+    def backend_validator(cls, v):
+        known_backend_names = set()
+        known_pools = set()
+
+        for backend in v.values():
+            if backend.volume_backend_name in known_backend_names:
+                raise ValueError(
+                    f"Duplicate backend name: {backend.volume_backend_name}"
+                )
+            known_backend_names.add(backend.volume_backend_name)
+            if backend.rbd_pool in known_pools:
+                raise ValueError(f"Duplicate pool: {backend.rbd_pool}")
+            known_pools.add(backend.rbd_pool)
+
+        return v

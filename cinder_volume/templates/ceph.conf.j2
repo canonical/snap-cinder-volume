@@ -1,0 +1,14 @@
+###############################################################################
+# [ WARNING ]
+# ceph configuration file maintained by the cinder-volume snap
+# local changes may be overwritten.
+###############################################################################
+[global]
+auth_supported = {{ ceph_ctx.auth }}
+mon host = {{ ceph_ctx.mon_hosts }}
+log to syslog = true
+err to syslog = true
+clog to syslog = true
+
+[client]
+keyring = {{ snap_paths.common }}/etc/ceph/{{ ceph_ctx.keyring }}
