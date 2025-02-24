@@ -13,7 +13,9 @@ state_path = {{ snap_paths.common }}/lib/cinder
 transport_url = {{ rabbitmq.url }}
 cinder_internal_tenant_project_id = {{ cinder.project_id }}
 cinder_internal_tenant_user_id = {{ cinder.user_id }}
+{% if cinder.default_volume_type is defined %}
 default_volume_type = {{ cinder.default_volume_type }}
+{% endif %}
 {% if cinder.cluster is defined and cinder.cluster %}
 cluster = {{ cinder.cluster }}
 {% endif %}
