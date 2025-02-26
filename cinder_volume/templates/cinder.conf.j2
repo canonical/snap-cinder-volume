@@ -24,6 +24,8 @@ enabled_backends = {{ cinder_backends.enabled_backends }}
 
 [database]
 connection = {{ database.url }}
+connection_recycle_time = 20
+max_pool_size = 2
 
 [oslo_messaging_rabbit]
 rabbit_quorum_queue = True
