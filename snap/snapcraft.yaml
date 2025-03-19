@@ -7,7 +7,7 @@ description: |
   directly for supported plugins, but can be used a base for other snaps
   that need to include cinder-volume.
 
-grade: devel
+grade: stable
 confinement: strict
 
 environment:
