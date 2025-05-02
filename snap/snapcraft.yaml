@@ -1,6 +1,6 @@
 name: cinder-volume
 base: core24
-version: "2024.1"
+version: "2025.1"
 summary: cinder-volume in a snap
 description: |
   This snap is a base snap for cinder-volume. It intended to be used
@@ -9,6 +9,12 @@ description: |
 
 grade: stable
 confinement: strict
+
+package-repositories:
+  - type: apt
+    cloud: epoxy
+    priority: always
+    pocket: proposed
 
 environment:
   LC_ALL: C
