@@ -15,6 +15,7 @@
 import abc
 import pathlib
 import typing
+from pathlib import Path
 
 from snaphelpers import Snap
 
@@ -55,6 +56,8 @@ class BaseBackendContext(Context):
         self.namespace = backend_name
         self.backend_name = backend_name
         self.backend_config = backend_config
+        self.supports_cluster = True
+
 
     def context(self) -> typing.Mapping[str, typing.Any]:
         """Full context for the backend configuration.
@@ -104,8 +107,10 @@ class CinderBackendContexts(Context):
             )
 
     def context(self) -> typing.Mapping[str, typing.Any]:
+        cluster_ok = all(ctx.supports_cluster for ctx in self.contexts.values())
         return {
             "enabled_backends": ",".join(self.enabled_backends),
+            "cluster_ok": cluster_ok,
             "contexts": {
                 config.backend_name: config.cinder_context()
                 for config in self.contexts.values()
@@ -123,6 +128,7 @@ class CephBackendContext(BaseBackendContext):
         super().__init__(backend_name, backend_config)
         # Not to override global `ceph` namespace
         self.namespace = "ceph_ctx"
+        self.supports_cluster = True
 
     def cinder_context(self) -> typing.Mapping[str, typing.Any]:
         context = dict(self.context())
@@ -162,4 +168,40 @@ class CephBackendContext(BaseBackendContext):
                 mode=0o600,
                 template_name="ceph.client.keyring.j2",
             ),
+        ]
+class HitachiBackendContext(BaseBackendContext):
+    """Render a Hitachi VSP backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'hitachi_ctx'
+        self.supports_cluster = False
+
+    def context(self) -> dict:
+        proto = self.cfg.get("protocol", "FC").lower()
+        driver_cls = (
+            "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver"
+            if proto == "fc"
+            else "cinder.volume.drivers.hitachi.hbsd_iscsi.HBSDISCSIDriver"
+        )
+        return {
+            "backend_name": self.backend_name,
+            "driver_class": driver_cls,
+            **self.cfg,
+        }
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in *cinder.conf*.  
+        Return {} to avoid duplicating the full stanza there."""
+        return {}   
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            # dest filename  • dest directory                 • Jinja file to load
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",                  #  vsp-test.conf
+                Path("etc/cinder/cinder.conf.d"),             #  …/cinder.conf.d/
+                template_name="hitachi.conf.j2",              #  Jinja source
+            )
         ]

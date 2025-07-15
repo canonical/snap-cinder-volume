@@ -260,18 +260,29 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
         return configuration.Configuration
 
     def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
-        """Instanciated backend context."""
+        """Instantiated backend context."""
         if self._backend_contexts is None:
             try:
-                config = self.get_config(snap)
+                cfg = self.get_config(snap)
             except pydantic.ValidationError as e:
                 raise error.CinderError("Invalid configuration") from e
-            backends = {
-                name: context.CephBackendContext(name, backend_config.model_dump())
-                for name, backend_config in config.ceph.items()
-            }
+
+            backend_ctxs: dict[str, context.Context] = {}
+
+            # Ceph back-ends
+            for name, be_cfg in cfg.ceph.items():
+                backend_ctxs[name] = context.CephBackendContext(
+                    name, be_cfg.model_dump()
+                )
+
+            # Hitachi back-ends 
+            for name, be_cfg in cfg.hitachi.items():
+                backend_ctxs[name] = context.HitachiBackendContext(
+                    name, be_cfg.model_dump()
+                )
+
             self._backend_contexts = context.CinderBackendContexts(
-                enabled_backends=list(backends.keys()),
-                contexts=backends,
+                enabled_backends=list(backend_ctxs.keys()),
+                contexts=backend_ctxs,
             )
         return self._backend_contexts

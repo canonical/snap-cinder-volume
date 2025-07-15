@@ -18,8 +18,20 @@ This module holds the definition of all configuration options the snap
 takes as input from `snap set`.
 """
 
+from __future__ import annotations
+
 import pydantic
+from pydantic import Field, ValidationInfo, field_validator
 import pydantic.alias_generators
+
+__all__ = [
+    "DatabaseConfiguration",
+    "RabbitMQConfiguration",
+    "CinderConfiguration",
+    "CephConfiguration",
+    "HitachiConfiguration",
+    "Configuration",
+]
 
 
 def to_kebab(value: str) -> str:
@@ -76,7 +88,7 @@ class BaseBackendConfiguration(ParentConfig):
     image_volume_cache_enabled: bool | None = None
     image_volume_cache_max_size_gb: int | None = None
     image_volume_cache_max_count: int | None = None
-    volume_dd_blocksize: int = 4096
+    volume_dd_blocksize: int = Field(default=4096, ge=512)
     volume_backend_name: str
 
 
@@ -91,6 +103,121 @@ class CephConfiguration(BaseBackendConfiguration):
     rbd_secret_uuid: str
     rbd_key: str
 
+class HitachiConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Hitachi VSP** Cinder driver.
+
+    Defaults follow the upstream driver recommendations/documentation.
+    """
+
+    # Mandatory connection parameters
+    san_ip: str
+    san_login: str
+    san_password: str
+    hitachi_storage_id: str | int
+    hitachi_pools: str  # comma‑separated list
+
+    # Driver selection 
+    protocol: str = Field(default="FC", pattern=r"^(FC|iSCSI)$")
+
+    # Copy & replication knobs
+    hitachi_default_copy_method: str = "FULL"  # or "THIN"
+    hitachi_copy_speed: int = Field(default=3, ge=1, le=15)
+    hitachi_copy_check_interval: int = Field(default=3, ge=1, le=600)
+    hitachi_async_copy_check_interval: int = Field(default=10, ge=1, le=600)
+
+    # Retry / timeout controls
+    hitachi_exec_retry_interval: int = Field(default=5, ge=1)
+    hitachi_extend_timeout: int = Field(default=600, ge=1)
+
+    # Authentication (iSCSI only)
+    hitachi_auth_method: str | None = None  # "CHAP" or "none"
+    hitachi_auth_user: str | None = None
+    hitachi_auth_password: str | None = None
+    hitachi_add_chap_user: bool = False
+
+    # Host‑group & zoning
+    hitachi_group_request: bool = False
+    hitachi_group_delete: bool = False
+    hitachi_group_create: bool = False
+    hitachi_group_range: str | None = None
+    hitachi_group_name_format: str | None = None
+
+    hitachi_target_ports: str | None = '[]' # controller nodes
+    hitachi_compute_target_ports: str | None = None  # compute nodes
+    hitachi_zoning_request: bool = False
+
+    # HORCM (legacy pair tools)
+    hitachi_horcm_numbers: str | None = None
+    hitachi_horcm_add_conf: bool = False
+    hitachi_horcm_user: str | None = None
+    hitachi_horcm_password: str | None = None
+    hitachi_horcm_resource_lock_timeout: int = Field(default=600, ge=0, le=7200)
+
+    # Array & pool ranges
+    hitachi_ldev_range: str | None = None
+    hitachi_pool_id: int | None = None
+    hitachi_thin_pool_id: int | None = None
+    hitachi_unit_name: str | None = None
+    hitachi_serial_number: str | None = None
+
+    # Miscellaneous knobs
+    hitachi_discard_zero_page: bool = True
+    hitachi_lock_timeout: int = Field(default=7200, ge=0)
+    hitachi_lun_retry_interval: int = Field(default=1, ge=1)
+    hitachi_lun_timeout: int = Field(default=50, ge=1)
+    hitachi_path_group_id: int = Field(default=0, ge=0, le=255)
+    hitachi_port_scheduler: bool = False
+    hitachi_pair_target_number: int = Field(default=0, ge=0, le=99)
+    hitachi_quorum_disk_id: int | None = None
+
+    # Replication settings
+    hitachi_replication_copy_speed: int = Field(default=3, ge=1, le=15)
+    hitachi_replication_number: int = Field(default=0, ge=0, le=255)
+    hitachi_replication_status_check_long_interval: int = 600
+    hitachi_replication_status_check_short_interval: int = 5
+    hitachi_replication_status_check_timeout: int = 86400
+
+    # REST/CLI time‑outs & keep‑alive
+    hitachi_rest_another_ldev_mapped_retry_timeout: int = 600
+    hitachi_rest_connect_timeout: int = 30
+    hitachi_rest_disable_io_wait: bool = True
+    hitachi_rest_get_api_response_timeout: int = 1800
+    hitachi_rest_job_api_response_timeout: int = 1800
+    hitachi_rest_keep_session_loop_interval: int = 180
+    hitachi_rest_pair_target_ports: str | None = None
+    hitachi_rest_server_busy_timeout: int = 7200
+    hitachi_rest_tcp_keepalive: bool = True
+    hitachi_rest_tcp_keepcnt: int = 4
+    hitachi_rest_tcp_keepidle: int = 60
+    hitachi_rest_tcp_keepintvl: int = 15
+    hitachi_rest_timeout: int = 30
+
+    # Restore / state transition
+    hitachi_restore_timeout: int = 86400
+    hitachi_state_transition_timeout: int = 900
+    hitachi_set_mirror_reserve_attribute: bool = True
+
+    # Snap / capacity saving
+    hitachi_snap_pool: str | None = None
+
+    # Global‑Active Device (mirror)
+    hitachi_mirror_auth_password: str | None = None
+    hitachi_mirror_auth_user: str | None = None
+    hitachi_mirror_compute_target_ports: str | None = None
+    hitachi_mirror_ldev_range: str | None = None
+    hitachi_mirror_pair_target_number: int = Field(default=0, ge=0, le=99)
+    hitachi_mirror_pool: str | None = None
+    hitachi_mirror_rest_api_ip: str | None = None
+    hitachi_mirror_rest_api_port: int = Field(default=443, ge=0, le=65535)
+    hitachi_mirror_rest_pair_target_ports: str | None = None
+    hitachi_mirror_rest_password: str | None = None
+    hitachi_mirror_rest_user: str | None = None
+    hitachi_mirror_snap_pool: str | None = None
+    hitachi_mirror_ssl_cert_path: str | None = None
+    hitachi_mirror_ssl_cert_verify: bool = False
+    hitachi_mirror_storage_id: str | None = None
+    hitachi_mirror_target_ports: str | None = None
+    hitachi_mirror_use_chap_auth: bool = False
 
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
@@ -100,6 +227,7 @@ class Configuration(BaseConfiguration):
     """
 
     ceph: dict[str, CephConfiguration] = {}
+    hitachi: dict[str, HitachiConfiguration] = {}
 
     @pydantic.field_validator("ceph")
     def backend_validator(cls, v):
@@ -116,4 +244,18 @@ class Configuration(BaseConfiguration):
                 raise ValueError(f"Duplicate pool: {backend.rbd_pool}")
             known_pools.add(backend.rbd_pool)
 
+        return v
+
+    @pydantic.field_validator("hitachi")
+    def validate_hitachi(cls, v, info: ValidationInfo):
+        # collect already-validated Ceph backends
+        existing = {b.volume_backend_name
+                    for b in info.data.get("ceph", {}).values()} 
+
+        for backend in v.values():
+            if backend.volume_backend_name in existing:
+                raise ValueError(
+                    f"Duplicate backend name: {backend.volume_backend_name}"
+                )
+            existing.add(backend.volume_backend_name)
         return v

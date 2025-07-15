@@ -95,3 +95,40 @@ Configure one or more Ceph backends using the `ceph.<backend-name>.*` namespace:
 * `ceph.<backend-name>.volume-dd-blocksize`  (4096) Block size for volume copy operations
 
 You may define multiple backends by using different backend names, e.g. `ceph.ceph1.*`, `ceph.ssdpool.*`, etc. Each backend name must be unique and each pool must only be used by one backend.
+
+### hitachi (backend)
+
+Configure one or more Hitachi VSP backends using the `hitachi.<backend-name>.*` namespace:
+
+**Required options:**
+* `hitachi.<backend-name>.volume-backend-name`  Unique name for this backend
+* `hitachi.<backend-name>.san-ip`              Management IP or FQDN of the VSP array
+* `hitachi.<backend-name>.san-login`           Username for the array
+* `hitachi.<backend-name>.san-password`        Password for the array
+* `hitachi.<backend-name>.hitachi-storage-id`  Serial number / storage ID of the array
+* `hitachi.<backend-name>.hitachi-pools`       Comma-separated list of pool names or IDs
+
+**Optional / common settings:**
+* `hitachi.<backend-name>.protocol`            Protocol (`FC` or `iSCSI`) – default `FC`
+* `hitachi.<backend-name>.hitachi-target-ports` Comma-separated list of target ports (e.g., `CL1-A,CL2-A`)
+* `hitachi.<backend-name>.hitachi-group-request` (false) Auto-create HostGroups / iSCSI targets
+* `hitachi.<backend-name>.hitachi-default-copy-method` Copy method (default `FULL`)
+* `hitachi.<backend-name>.hitachi-copy-speed`  Copy speed (1–15, default 3)
+* `hitachi.<backend-name>.hitachi-auth-method` iSCSI authentication method (`CHAP` or none)
+* `hitachi.<backend-name>.hitachi-add-chap-user` (false) Auto-create CHAP user
+* `hitachi.<backend-name>.hitachi-discard-zero-page` (true) Enable zero-page reclamation
+* `hitachi.<backend-name>.hitachi-rest-timeout` (30) REST API timeout in seconds
+* `hitachi.<backend-name>.hitachi-replication-number` (0) Replication instance number
+
+See the driver documentation for additional advanced settings.
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  hitachi.vsp350.volume-backend-name=vsp350 \
+  hitachi.vsp350.san-ip=10.0.0.50 \
+  hitachi.vsp350.san-login=svcuser \
+  hitachi.vsp350.san-password=supersecret \
+  hitachi.vsp350.hitachi-storage-id=45000 \
+  hitachi.vsp350.hitachi-pools=DP_POOL_01 \
+  hitachi.vsp350.protocol=FC
