@@ -1,3 +1,4 @@
 snap-helpers @ git+https://github.com/albertodonato/snap-helpers
 jinja2
 pydantic
+py-pure-client>=1.47.0

@@ -30,6 +30,7 @@ __all__ = [
     "CinderConfiguration",
     "CephConfiguration",
     "HitachiConfiguration",
+    "PureConfiguration",
     "Configuration",
 ]
 
@@ -219,6 +220,45 @@ class HitachiConfiguration(BaseBackendConfiguration):
     hitachi_mirror_target_ports: str | None = None
     hitachi_mirror_use_chap_auth: bool = False
 
+
+class PureConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Pure Storage FlashArray** Cinder driver.
+    
+    This configuration supports iSCSI, Fibre Channel, and NVMe protocols
+    with advanced features like replication, TriSync, and auto-eradication.
+    """
+    
+    # Core required fields
+    san_ip: str  # FlashArray management IP/FQDN
+    pure_api_token: str  # REST API authorization token
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc|nvme)$")
+    
+    # Protocol-specific options
+    pure_iscsi_cidr: str = "0.0.0.0/0"
+    pure_iscsi_cidr_list: list[str] | None = None
+    pure_nvme_cidr: str = "0.0.0.0/0" 
+    pure_nvme_cidr_list: list[str] | None = None
+    pure_nvme_transport: str = Field(default="roce", pattern="^(roce|tcp)$")
+    
+    # Advanced features
+    pure_host_personality: str | None = Field(
+        default=None,
+        pattern="^(aix|esxi|hitachi-vsp|hpux|oracle-vm-server|solaris|vms)$"
+    )
+    pure_automatic_max_oversubscription_ratio: bool = True
+    pure_eradicate_on_delete: bool = False
+    
+    # Replication settings
+    pure_replica_interval_default: int = Field(default=3600, ge=1)
+    pure_replica_retention_short_term_default: int = Field(default=14400, ge=1)
+    pure_replica_retention_long_term_per_day_default: int = Field(default=3, ge=1)
+    pure_replica_retention_long_term_default: int = Field(default=7, ge=1)
+    pure_replication_pg_name: str = "cinder-group"
+    pure_replication_pod_name: str = "cinder-pod"
+    pure_trisync_enabled: bool = False
+    pure_trisync_pg_name: str = "cinder-trisync"
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -228,6 +268,7 @@ class Configuration(BaseConfiguration):
 
     ceph: dict[str, CephConfiguration] = {}
     hitachi: dict[str, HitachiConfiguration] = {}
+    pure: dict[str, PureConfiguration] = {}
 
     @pydantic.field_validator("ceph")
     def backend_validator(cls, v):

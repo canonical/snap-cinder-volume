@@ -205,3 +205,42 @@ class HitachiBackendContext(BaseBackendContext):
                 template_name="hitachi.conf.j2",              #  Jinja source
             )
         ]
+
+
+class PureBackendContext(BaseBackendContext):
+    """Render a Pure Storage FlashArray backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'pure_ctx'
+        self.supports_cluster = True  # Pure supports clustering
+
+    def context(self) -> dict:
+        protocol = self.cfg.get("protocol", "iscsi").lower()
+        
+        # Driver class selection based on protocol
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.pure.PureISCSIDriver",
+            "fc": "cinder.volume.drivers.pure.PureFCDriver", 
+            "nvme": "cinder.volume.drivers.pure.PureNVMEDriver"
+        }
+        
+        return {
+            "backend_name": self.backend_name,
+            "driver_class": driver_classes[protocol],
+            **self.cfg,
+        }
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in cinder.conf. Return {} to avoid duplication."""
+        return {}
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="pure.conf.j2",
+            )
+        ]
