@@ -132,3 +132,55 @@ sudo snap set cinder-volume \
   hitachi.vsp350.hitachi-storage-id=45000 \
   hitachi.vsp350.hitachi-pools=DP_POOL_01 \
   hitachi.vsp350.protocol=FC
+```
+
+### pure (backend)
+
+Configure one or more Pure Storage FlashArray backends using the `pure.<backend-name>.*` namespace:
+
+**Required options:**
+* `pure.<backend-name>.volume-backend-name`  Unique name for this backend
+* `pure.<backend-name>.san-ip`              Management IP or FQDN of the FlashArray
+* `pure.<backend-name>.pure-api-token`      REST API authorization token from Purity system
+
+**Protocol configuration:**
+* `pure.<backend-name>.protocol`            Protocol (`iscsi`, `fc`, or `nvme`) – default `iscsi`
+
+**Network access control (iSCSI/NVMe):**
+* `pure.<backend-name>.pure-iscsi-cidr`     (0.0.0.0/0) CIDR of FlashArray iSCSI targets hosts can connect to
+* `pure.<backend-name>.pure-iscsi-cidr-list` Comma-separated list of CIDR for iSCSI targets (overrides pure-iscsi-cidr)
+* `pure.<backend-name>.pure-nvme-cidr`      (0.0.0.0/0) CIDR of FlashArray NVMe targets hosts can connect to  
+* `pure.<backend-name>.pure-nvme-cidr-list` Comma-separated list of CIDR for NVMe targets (overrides pure-nvme-cidr)
+* `pure.<backend-name>.pure-nvme-transport` (`roce`) NVMe transport layer: `roce` or `tcp`
+
+**Host and storage tuning:**
+* `pure.<backend-name>.pure-host-personality` Host personality for protocol tuning: `aix`, `esxi`, `hitachi-vsp`, `hpux`, `oracle-vm-server`, `solaris`, `vms`
+* `pure.<backend-name>.pure-automatic-max-oversubscription-ratio` (true) Auto-determine oversubscription ratio
+* `pure.<backend-name>.pure-eradicate-on-delete` (false) Immediately eradicate volumes on delete (WARNING: not recoverable)
+
+**Replication settings:**
+* `pure.<backend-name>.pure-replica-interval-default` (3600) Snapshot replication interval in seconds
+* `pure.<backend-name>.pure-replica-retention-short-term-default` (14400) Retain all snapshots for this time (seconds)
+* `pure.<backend-name>.pure-replica-retention-long-term-per-day-default` (3) Snapshots to retain per day
+* `pure.<backend-name>.pure-replica-retention-long-term-default` (7) Days to retain daily snapshots
+* `pure.<backend-name>.pure-replication-pg-name` (`cinder-group`) Protection Group name for async replication
+* `pure.<backend-name>.pure-replication-pod-name` (`cinder-pod`) Pod name for sync replication
+
+**Advanced replication (TriSync):**
+* `pure.<backend-name>.pure-trisync-enabled` (false) Enable 3-site replication (sync + async)
+* `pure.<backend-name>.pure-trisync-pg-name` (`cinder-trisync`) Protection Group name for TriSync replication
+
+**Requirements:**
+- Pure Storage FlashArray with Purity 6.1.0+ (6.4.2+ for NVMe-TCP)
+- API token from Purity system management interface
+- Python SDK: py-pure-client 1.47.0+ (automatically installed)
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  pure.flasharray1.volume-backend-name=flasharray1 \
+  pure.flasharray1.san-ip=10.0.0.100 \
+  pure.flasharray1.pure-api-token=your-api-token-here \
+  pure.flasharray1.protocol=iscsi \
+  pure.flasharray1.pure-host-personality=esxi \
+  pure.flasharray1.pure-iscsi-cidr=10.0.0.0/24
