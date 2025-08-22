@@ -217,7 +217,7 @@ class PureBackendContext(BaseBackendContext):
         self.supports_cluster = True  # Pure supports clustering
 
     def context(self) -> dict:
-        protocol = self.cfg.get("protocol", "iscsi").lower()
+        protocol = self.cfg.get("protocol", "fc").lower()
         
         # Driver class selection based on protocol
         driver_classes = {

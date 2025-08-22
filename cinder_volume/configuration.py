@@ -231,7 +231,7 @@ class PureConfiguration(BaseBackendConfiguration):
     # Core required fields
     san_ip: str  # FlashArray management IP/FQDN
     pure_api_token: str  # REST API authorization token
-    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc|nvme)$")
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc|nvme)$")
     
     # Protocol-specific options
     pure_iscsi_cidr: str = "0.0.0.0/0"
@@ -270,33 +270,34 @@ class Configuration(BaseConfiguration):
     hitachi: dict[str, HitachiConfiguration] = {}
     pure: dict[str, PureConfiguration] = {}
 
-    @pydantic.field_validator("ceph")
-    def backend_validator(cls, v):
-        known_backend_names = set()
-        known_pools = set()
-
-        for backend in v.values():
-            if backend.volume_backend_name in known_backend_names:
-                raise ValueError(
-                    f"Duplicate backend name: {backend.volume_backend_name}"
-                )
-            known_backend_names.add(backend.volume_backend_name)
-            if backend.rbd_pool in known_pools:
-                raise ValueError(f"Duplicate pool: {backend.rbd_pool}")
-            known_pools.add(backend.rbd_pool)
-
-        return v
-
-    @pydantic.field_validator("hitachi")
-    def validate_hitachi(cls, v, info: ValidationInfo):
-        # collect already-validated Ceph backends
-        existing = {b.volume_backend_name
-                    for b in info.data.get("ceph", {}).values()} 
-
-        for backend in v.values():
-            if backend.volume_backend_name in existing:
-                raise ValueError(
-                    f"Duplicate backend name: {backend.volume_backend_name}"
-                )
-            existing.add(backend.volume_backend_name)
-        return v
+    @pydantic.model_validator(mode='after')
+    def validate_unique_backend_names(self):
+        """Validate that all backend names are unique across all backend types."""
+        backend_names = set()
+        ceph_pools = set()
+        
+        # Check all backend types for unique backend names
+        for backend_type, backends in [
+            ("ceph", self.ceph),
+            ("hitachi", self.hitachi), 
+            ("pure", self.pure)
+        ]:
+            for backend_key, backend in backends.items():
+                # Check for duplicate backend names across all types
+                if backend.volume_backend_name in backend_names:
+                    raise ValueError(
+                        f"Duplicate backend name '{backend.volume_backend_name}' "
+                        f"found in {backend_type} backend '{backend_key}'"
+                    )
+                backend_names.add(backend.volume_backend_name)
+                
+                # Check for duplicate Ceph pools (only applies to Ceph backends)
+                if backend_type == "ceph" and hasattr(backend, 'rbd_pool'):
+                    if backend.rbd_pool in ceph_pools:
+                        raise ValueError(
+                            f"Duplicate Ceph pool '{backend.rbd_pool}' "
+                            f"found in backend '{backend_key}'"
+                        )
+                    ceph_pools.add(backend.rbd_pool)
+        
+        return self
