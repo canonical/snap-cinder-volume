@@ -244,3 +244,41 @@ class PureBackendContext(BaseBackendContext):
                 template_name="pure.conf.j2",
             )
         ]
+
+
+class DellSCBackendContext(BaseBackendContext):
+    """Render a Dell Storage Center backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'dellsc_ctx'
+        self.supports_cluster = False  # Dell SC does not support clustering
+
+    def context(self) -> dict:
+        protocol = self.cfg.get("protocol", "fc").lower()
+        
+        # Driver class selection based on protocol
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.SCISCSIDriver",
+            "fc": "cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver"
+        }
+        
+        return {
+            "backend_name": self.backend_name,
+            "driver_class": driver_classes[protocol],
+            **self.cfg,
+        }
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in cinder.conf. Return {} to avoid duplication."""
+        return {}
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="dellsc.conf.j2",
+            )
+        ]

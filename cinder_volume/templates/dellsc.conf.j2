@@ -1,0 +1,58 @@
+{# Dell Storage Center backend stanza template for cinder.conf.d
+   Renders each option only when it has a value so blank settings vanish. #}
+{%- macro cfg(name, value) -%}
+{%-   if value is not none and value != '' -%}
+{{ name }} = {{ value }}
+{%-   endif -%}
+{%- endmacro %}
+
+[{{ dellsc_ctx.backend_name }}]
+
+# ----------------------------------------------------------------------
+# Core driver / connection
+# ----------------------------------------------------------------------
+{{ cfg('volume_driver', dellsc_ctx.driver_class) }}
+{{ cfg('san_ip', dellsc_ctx.san_ip) }}
+{{ cfg('san_login', dellsc_ctx.san_login) }}
+{{ cfg('san_password', dellsc_ctx.san_password) }}
+{{ cfg('dell_sc_ssn', dellsc_ctx.dell_sc_ssn) }}
+{{ cfg('dell_sc_api_port', dellsc_ctx.dell_sc_api_port) }}
+{{ cfg('dell_sc_server_folder', dellsc_ctx.dell_sc_server_folder) }}
+{{ cfg('dell_sc_volume_folder', dellsc_ctx.dell_sc_volume_folder) }}
+{{ cfg('dell_server_os', dellsc_ctx.dell_server_os) }}
+{{ cfg('dell_sc_verify_cert', dellsc_ctx.dell_sc_verify_cert) }}
+enable_unsupported_driver = True
+
+# ----------------------------------------------------------------------
+# Provisioning options
+# ----------------------------------------------------------------------
+{{ cfg('san_thin_provision', dellsc_ctx.san_thin_provision) }}
+
+# ----------------------------------------------------------------------
+# Network filtering
+# ----------------------------------------------------------------------
+{{ cfg('excluded_domain_ips', dellsc_ctx.excluded_domain_ips) }}
+{{ cfg('included_domain_ips', dellsc_ctx.included_domain_ips) }}
+
+# ----------------------------------------------------------------------
+# Dual DSM configuration
+# ----------------------------------------------------------------------
+{{ cfg('secondary_san_ip', dellsc_ctx.secondary_san_ip) }}
+{{ cfg('secondary_san_login', dellsc_ctx.secondary_san_login) }}
+{{ cfg('secondary_san_password', dellsc_ctx.secondary_san_password) }}
+{{ cfg('secondary_sc_api_port', dellsc_ctx.secondary_sc_api_port) }}
+
+# ----------------------------------------------------------------------
+# API timeout configuration
+# ----------------------------------------------------------------------
+{{ cfg('dell_api_async_rest_timeout', dellsc_ctx.dell_api_async_rest_timeout) }}
+{{ cfg('dell_api_sync_rest_timeout', dellsc_ctx.dell_api_sync_rest_timeout) }}
+
+# ----------------------------------------------------------------------
+# SSH connection settings
+# ----------------------------------------------------------------------
+{{ cfg('ssh_conn_timeout', dellsc_ctx.ssh_conn_timeout) }}
+{{ cfg('ssh_max_pool_conn', dellsc_ctx.ssh_max_pool_conn) }}
+{{ cfg('ssh_min_pool_conn', dellsc_ctx.ssh_min_pool_conn) }}
+
+# --- End of Dell Storage Center backend stanza ---

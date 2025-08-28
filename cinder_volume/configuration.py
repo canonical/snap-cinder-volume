@@ -31,6 +31,7 @@ __all__ = [
     "CephConfiguration",
     "HitachiConfiguration",
     "PureConfiguration",
+    "DellSCConfiguration",
     "Configuration",
 ]
 
@@ -259,6 +260,48 @@ class PureConfiguration(BaseBackendConfiguration):
     pure_trisync_pg_name: str = "cinder-trisync"
 
 
+class DellSCConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell Storage Center** Cinder driver.
+    
+    This configuration supports iSCSI and Fibre Channel protocols
+    with dual DSM support, network filtering, and comprehensive timeout controls.
+    """
+    
+    # Core required fields
+    san_ip: str  # Dell Storage Center management IP/FQDN
+    san_login: str  # SAN management username
+    san_password: str  # SAN management password
+    dell_sc_ssn: int = Field(default=64702)  # Storage Center System Serial Number
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+    
+    # Dell Storage Center specific options
+    dell_sc_api_port: int = Field(default=3033, ge=1, le=65535)
+    dell_sc_server_folder: str = "openstack"
+    dell_sc_volume_folder: str = "openstack"
+    dell_server_os: str = "Red Hat Linux 6.x"
+    dell_sc_verify_cert: bool = False
+    
+    # Domain and network filtering
+    excluded_domain_ips: list[str] | None = None
+    included_domain_ips: list[str] | None = None
+    san_thin_provision: bool = True
+    
+    # Dual DSM configuration
+    secondary_san_ip: str | None = None
+    secondary_san_login: str = "Admin"
+    secondary_san_password: str | None = None
+    secondary_sc_api_port: int = Field(default=3033, ge=1, le=65535)
+    
+    # API timeout configuration
+    dell_api_async_rest_timeout: int = Field(default=15, ge=1)
+    dell_api_sync_rest_timeout: int = Field(default=30, ge=1)
+    
+    # SSH connection settings
+    ssh_conn_timeout: int = Field(default=30, ge=1)
+    ssh_max_pool_conn: int = Field(default=5, ge=1)
+    ssh_min_pool_conn: int = Field(default=1, ge=1)
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -269,6 +312,7 @@ class Configuration(BaseConfiguration):
     ceph: dict[str, CephConfiguration] = {}
     hitachi: dict[str, HitachiConfiguration] = {}
     pure: dict[str, PureConfiguration] = {}
+    dellsc: dict[str, DellSCConfiguration] = {}
 
     @pydantic.model_validator(mode='after')
     def validate_unique_backend_names(self):
@@ -280,7 +324,8 @@ class Configuration(BaseConfiguration):
         for backend_type, backends in [
             ("ceph", self.ceph),
             ("hitachi", self.hitachi), 
-            ("pure", self.pure)
+            ("pure", self.pure),
+            ("dellsc", self.dellsc)
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types

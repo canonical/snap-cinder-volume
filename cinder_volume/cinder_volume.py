@@ -287,6 +287,12 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
                     name, be_cfg.model_dump()
                 )
 
+            # Dell Storage Center back-ends
+            for name, be_cfg in cfg.dellsc.items():
+                backend_ctxs[name] = context.DellSCBackendContext(
+                    name, be_cfg.model_dump()
+                )
+
             self._backend_contexts = context.CinderBackendContexts(
                 enabled_backends=list(backend_ctxs.keys()),
                 contexts=backend_ctxs,
