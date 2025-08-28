@@ -53,7 +53,20 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         self.template(snap)
 
     def configure(self, snap: Snap) -> None:
-        backend_contexts = self.backend_contexts(snap)
+        # Always clear existing backend configuration files first
+        # This ensures cleanup even when no backends are configured
+        self._clear_backend_configs(snap)
+        
+        try:
+            backend_contexts = self.backend_contexts(snap)
+        except error.CinderError as e:
+            # If no backends are configured, just clear configs and exit
+            if "At least one backend must be enabled" in str(e):
+                logging.info("No backends configured, cleared all backend configs")
+                return
+            # Re-raise other configuration errors
+            raise
+            
         self.setup_dirs(snap, backend_contexts)
         modified = self.template(snap)
         backend_tpls = []
@@ -253,6 +266,25 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
             context.pop(backend_context.namespace)
 
         return modified_templates
+
+    def _clear_backend_configs(self, snap: Snap) -> None:
+        """Clear all existing backend configuration files.
+        
+        This ensures that when backends are removed from configuration,
+        their template files are also removed from the filesystem.
+        """
+        backend_config_dir = snap.paths.common / "etc/cinder/cinder.conf.d"
+        if not backend_config_dir.exists():
+            return
+            
+        # Remove all .conf files in cinder.conf.d directory
+        # These are backend-specific configuration files
+        for conf_file in backend_config_dir.glob("*.conf"):
+            try:
+                logging.debug("Removing backend config file: %s", conf_file)
+                conf_file.unlink()
+            except OSError as e:
+                logging.warning("Failed to remove backend config file %s: %s", conf_file, e)
 
 
 class GenericCinderVolume(CinderVolume[configuration.Configuration]):
