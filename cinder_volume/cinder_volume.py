@@ -109,13 +109,15 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         raise NotImplementedError
 
     def get_config(self, snap: Snap) -> CONF:
+        logging.debug("Getting configuration")
         keys = self.config_type().model_fields.keys()
+        all_config = snap.config.get_options(*keys).as_dict()
+        
         try:
-            return self.config_type().model_validate(
-                snap.config.get_options(*keys).as_dict()
-            )
+            return self.config_type().model_validate(all_config)
         except pydantic.ValidationError as e:
             raise error.CinderError("Invalid configuration") from e
+    
 
     def directories(self) -> list[template.Directory]:
         """Directories to be created on the common path."""
@@ -301,25 +303,25 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
 
             backend_ctxs: dict[str, context.Context] = {}
 
-            # Ceph back-ends
+            # Ceph back-ends (no extra config support - keeping original behavior)
             for name, be_cfg in cfg.ceph.items():
                 backend_ctxs[name] = context.CephBackendContext(
                     name, be_cfg.model_dump()
                 )
 
-            # Hitachi back-ends 
+            # Hitachi back-ends (extra options now included in model_dump())
             for name, be_cfg in cfg.hitachi.items():
                 backend_ctxs[name] = context.HitachiBackendContext(
                     name, be_cfg.model_dump()
                 )
 
-            # Pure Storage back-ends
+            # Pure Storage back-ends (extra options now included in model_dump())
             for name, be_cfg in cfg.pure.items():
                 backend_ctxs[name] = context.PureBackendContext(
                     name, be_cfg.model_dump()
                 )
 
-            # Dell Storage Center back-ends
+            # Dell Storage Center back-ends (extra options now included in model_dump())
             for name, be_cfg in cfg.dellsc.items():
                 backend_ctxs[name] = context.DellSCBackendContext(
                     name, be_cfg.model_dump()

@@ -175,7 +175,7 @@ class HitachiBackendContext(BaseBackendContext):
     def __init__(self, backend_name: str, backend_config: dict):
         super().__init__(backend_name, backend_config)
         self.cfg = backend_config
-        self.namespace = 'hitachi_ctx'
+        self.namespace = 'backend'
         self.supports_cluster = False
 
     def context(self) -> dict:
@@ -185,11 +185,12 @@ class HitachiBackendContext(BaseBackendContext):
             if proto == "fc"
             else "cinder.volume.drivers.hitachi.hbsd_iscsi.HBSDISCSIDriver"
         )
-        return {
+        context = {
             "backend_name": self.backend_name,
             "driver_class": driver_cls,
             **self.cfg,
         }
+        return context
 
     def cinder_context(self) -> dict[str, typing.Any]:
         """Keys that land in *cinder.conf*.  
@@ -198,11 +199,10 @@ class HitachiBackendContext(BaseBackendContext):
         
     def template_files(self) -> list[template.Template]:
         return [
-            # dest filename  • dest directory                 • Jinja file to load
             template.CommonTemplate(
-                f"{self.backend_name}.conf",                  #  vsp-test.conf
-                Path("etc/cinder/cinder.conf.d"),             #  …/cinder.conf.d/
-                template_name="hitachi.conf.j2",              #  Jinja source
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="backend.conf.j2",
             )
         ]
 
@@ -213,7 +213,7 @@ class PureBackendContext(BaseBackendContext):
     def __init__(self, backend_name: str, backend_config: dict):
         super().__init__(backend_name, backend_config)
         self.cfg = backend_config
-        self.namespace = 'pure_ctx'
+        self.namespace = 'backend'
         self.supports_cluster = True  # Pure supports clustering
 
     def context(self) -> dict:
@@ -226,11 +226,14 @@ class PureBackendContext(BaseBackendContext):
             "nvme": "cinder.volume.drivers.pure.PureNVMEDriver"
         }
         
-        return {
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        
+        context = {
             "backend_name": self.backend_name,
-            "driver_class": driver_classes[protocol],
+            "driver_class": driver_class,
             **self.cfg,
         }
+        return context
 
     def cinder_context(self) -> dict[str, typing.Any]:
         """Keys that land in cinder.conf. Return {} to avoid duplication."""
@@ -241,7 +244,7 @@ class PureBackendContext(BaseBackendContext):
             template.CommonTemplate(
                 f"{self.backend_name}.conf",
                 Path("etc/cinder/cinder.conf.d"),
-                template_name="pure.conf.j2",
+                template_name="backend.conf.j2",
             )
         ]
 
@@ -252,7 +255,7 @@ class DellSCBackendContext(BaseBackendContext):
     def __init__(self, backend_name: str, backend_config: dict):
         super().__init__(backend_name, backend_config)
         self.cfg = backend_config
-        self.namespace = 'dellsc_ctx'
+        self.namespace = 'backend'
         self.supports_cluster = False  # Dell SC does not support clustering
 
     def context(self) -> dict:
@@ -264,11 +267,14 @@ class DellSCBackendContext(BaseBackendContext):
             "fc": "cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver"
         }
         
-        return {
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        
+        context = {
             "backend_name": self.backend_name,
-            "driver_class": driver_classes[protocol],
+            "driver_class": driver_class,
             **self.cfg,
         }
+        return context
 
     def cinder_context(self) -> dict[str, typing.Any]:
         """Keys that land in cinder.conf. Return {} to avoid duplication."""
@@ -279,6 +285,6 @@ class DellSCBackendContext(BaseBackendContext):
             template.CommonTemplate(
                 f"{self.backend_name}.conf",
                 Path("etc/cinder/cinder.conf.d"),
-                template_name="dellsc.conf.j2",
+                template_name="backend.conf.j2",
             )
         ]

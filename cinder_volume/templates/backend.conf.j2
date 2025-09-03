@@ -1,0 +1,16 @@
+{# Generic backend stanza template for cinder.conf.d
+   Dynamically renders all key-value pairs from configuration for any storage backend #}
+{%- macro cfg(name, value) -%}
+{%-   if value is not none and value != '' -%}
+{{ name }} = {{ value }}
+{%-   endif -%}
+{%- endmacro -%}
+[{{ backend.backend_name }}]
+# Core driver configuration
+{{ cfg('volume_driver', backend.driver_class) }}
+# Dynamic configuration - all backend options
+{%- for key, value in backend.items() %}
+{%-   if key not in ['backend_name', 'driver_class', 'backend', 'protocol'] %}
+{{ cfg(key, value) }}
+{%-   endif %}
+{%- endfor %}
