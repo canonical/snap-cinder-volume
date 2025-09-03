@@ -294,7 +294,7 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
         return configuration.Configuration
 
     def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
-        """Instantiated backend context."""
+        """Instantiated backend context using fully dynamic discovery."""
         if self._backend_contexts is None:
             try:
                 cfg = self.get_config(snap)
@@ -303,29 +303,25 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
 
             backend_ctxs: dict[str, context.Context] = {}
 
-            # Ceph back-ends (no extra config support - keeping original behavior)
-            for name, be_cfg in cfg.ceph.items():
-                backend_ctxs[name] = context.CephBackendContext(
-                    name, be_cfg.model_dump()
-                )
-
-            # Hitachi back-ends (extra options now included in model_dump())
-            for name, be_cfg in cfg.hitachi.items():
-                backend_ctxs[name] = context.HitachiBackendContext(
-                    name, be_cfg.model_dump()
-                )
-
-            # Pure Storage back-ends (extra options now included in model_dump())
-            for name, be_cfg in cfg.pure.items():
-                backend_ctxs[name] = context.PureBackendContext(
-                    name, be_cfg.model_dump()
-                )
-
-            # Dell Storage Center back-ends (extra options now included in model_dump())
-            for name, be_cfg in cfg.dellsc.items():
-                backend_ctxs[name] = context.DellSCBackendContext(
-                    name, be_cfg.model_dump()
-                )
+            # Auto-discover all backend types from configuration
+            for field_name, field_info in cfg.model_fields.items():
+                # Skip non-backend fields
+                if not isinstance(getattr(cfg, field_name), dict):
+                    continue
+                    
+                # Get the context class name by convention: {Backend}BackendContext
+                context_class_name = f"{field_name.title()}BackendContext"
+                
+                # Get the context class from the context module
+                if hasattr(context, context_class_name):
+                    context_class = getattr(context, context_class_name)
+                    backend_configs = getattr(cfg, field_name)
+                    
+                    # Instantiate contexts for all backends of this type
+                    for name, be_cfg in backend_configs.items():
+                        backend_ctxs[name] = context_class(name, be_cfg.model_dump())
+                else:
+                    logging.warning(f"Context class {context_class_name} not found for backend type {field_name}")
 
             self._backend_contexts = context.CinderBackendContexts(
                 enabled_backends=list(backend_ctxs.keys()),
