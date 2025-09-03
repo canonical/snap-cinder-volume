@@ -73,6 +73,24 @@ class BaseConfiguration(ParentConfig):
 
 
 class BaseBackendConfiguration(ParentConfig):
+    @pydantic.model_validator(mode='before')
+    @classmethod
+    def convert_extra_fields(cls, data):
+        """Convert kebab-case keys to snake_case for extra fields."""
+        if isinstance(data, dict):
+            converted = {}
+            defined_fields = set(cls.model_fields.keys())
+            for key, value in data.items():
+                snake_key = key.replace("-", "_")
+                if snake_key in defined_fields:
+                    # Defined field - keep original key for alias generator
+                    converted[key] = value
+                else:
+                    # Extra field - convert to snake_case
+                    converted[snake_key] = value
+            return converted
+        return data
+
     image_volume_cache_enabled: bool | None = None
     image_volume_cache_max_size_gb: int | None = None
     image_volume_cache_max_count: int | None = None
