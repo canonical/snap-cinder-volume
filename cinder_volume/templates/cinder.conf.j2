@@ -16,7 +16,7 @@ cinder_internal_tenant_user_id = {{ cinder.user_id }}
 {% if cinder.default_volume_type is defined %}
 default_volume_type = {{ cinder.default_volume_type }}
 {% endif %}
-{% if cinder.cluster is defined and cinder.cluster %}
+{% if cinder.cluster is defined and cinder.cluster and cinder.cluster_ok %}
 cluster = {{ cinder.cluster }}
 {% endif %}
 enabled_backends = {{ cinder_backends.enabled_backends }}

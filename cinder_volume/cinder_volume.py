@@ -53,7 +53,20 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         self.template(snap)
 
     def configure(self, snap: Snap) -> None:
-        backend_contexts = self.backend_contexts(snap)
+        # Always clear existing backend configuration files first
+        # This ensures cleanup even when no backends are configured
+        self._clear_backend_configs(snap)
+        
+        try:
+            backend_contexts = self.backend_contexts(snap)
+        except error.CinderError as e:
+            # If no backends are configured, just clear configs and exit
+            if "At least one backend must be enabled" in str(e):
+                logging.info("No backends configured, cleared all backend configs")
+                return
+            # Re-raise other configuration errors
+            raise
+            
         self.setup_dirs(snap, backend_contexts)
         modified = self.template(snap)
         backend_tpls = []
@@ -96,13 +109,15 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         raise NotImplementedError
 
     def get_config(self, snap: Snap) -> CONF:
+        logging.debug("Getting configuration")
         keys = self.config_type().model_fields.keys()
+        all_config = snap.config.get_options(*keys).as_dict()
+        
         try:
-            return self.config_type().model_validate(
-                snap.config.get_options(*keys).as_dict()
-            )
+            return self.config_type().model_validate(all_config)
         except pydantic.ValidationError as e:
             raise error.CinderError("Invalid configuration") from e
+    
 
     def directories(self) -> list[template.Directory]:
         """Directories to be created on the common path."""
@@ -254,24 +269,62 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
 
         return modified_templates
 
+    def _clear_backend_configs(self, snap: Snap) -> None:
+        """Clear all existing backend configuration files.
+        
+        This ensures that when backends are removed from configuration,
+        their template files are also removed from the filesystem.
+        """
+        backend_config_dir = snap.paths.common / "etc/cinder/cinder.conf.d"
+        if not backend_config_dir.exists():
+            return
+            
+        # Remove all .conf files in cinder.conf.d directory
+        # These are backend-specific configuration files
+        for conf_file in backend_config_dir.glob("*.conf"):
+            try:
+                logging.debug("Removing backend config file: %s", conf_file)
+                conf_file.unlink()
+            except OSError as e:
+                logging.warning("Failed to remove backend config file %s: %s", conf_file, e)
+
 
 class GenericCinderVolume(CinderVolume[configuration.Configuration]):
     def config_type(self) -> typing.Type[configuration.Configuration]:
         return configuration.Configuration
 
     def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
-        """Instanciated backend context."""
+        """Instantiated backend context using fully dynamic discovery."""
         if self._backend_contexts is None:
             try:
-                config = self.get_config(snap)
+                cfg = self.get_config(snap)
             except pydantic.ValidationError as e:
                 raise error.CinderError("Invalid configuration") from e
-            backends = {
-                name: context.CephBackendContext(name, backend_config.model_dump())
-                for name, backend_config in config.ceph.items()
-            }
+
+            backend_ctxs: dict[str, context.Context] = {}
+
+            # Auto-discover all backend types from configuration
+            for field_name, field_info in cfg.model_fields.items():
+                # Skip non-backend fields
+                if not isinstance(getattr(cfg, field_name), dict):
+                    continue
+                    
+                # Get the context class name by convention: {Backend}BackendContext
+                context_class_name = f"{field_name.title()}BackendContext"
+                
+                # Get the context class from the context module
+                if hasattr(context, context_class_name):
+                    context_class = getattr(context, context_class_name)
+                    backend_configs = getattr(cfg, field_name)
+                    
+                    # Instantiate contexts for all backends of this type
+                    for name, be_cfg in backend_configs.items():
+                        backend_ctxs[name] = context_class(name, be_cfg.model_dump())
+                else:
+                    logging.warning(f"Context class {context_class_name} not found for backend type {field_name}")
+
             self._backend_contexts = context.CinderBackendContexts(
-                enabled_backends=list(backends.keys()),
-                contexts=backends,
+                enabled_backends=list(backend_ctxs.keys()),
+                contexts=backend_ctxs,
             )
         return self._backend_contexts
