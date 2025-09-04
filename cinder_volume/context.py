@@ -15,6 +15,7 @@
 import abc
 import pathlib
 import typing
+from pathlib import Path
 
 from snaphelpers import Snap
 
@@ -55,6 +56,8 @@ class BaseBackendContext(Context):
         self.namespace = backend_name
         self.backend_name = backend_name
         self.backend_config = backend_config
+        self.supports_cluster = True
+
 
     def context(self) -> typing.Mapping[str, typing.Any]:
         """Full context for the backend configuration.
@@ -104,8 +107,10 @@ class CinderBackendContexts(Context):
             )
 
     def context(self) -> typing.Mapping[str, typing.Any]:
+        cluster_ok = all(ctx.supports_cluster for ctx in self.contexts.values())
         return {
             "enabled_backends": ",".join(self.enabled_backends),
+            "cluster_ok": cluster_ok,
             "contexts": {
                 config.backend_name: config.cinder_context()
                 for config in self.contexts.values()
@@ -123,6 +128,7 @@ class CephBackendContext(BaseBackendContext):
         super().__init__(backend_name, backend_config)
         # Not to override global `ceph` namespace
         self.namespace = "ceph_ctx"
+        self.supports_cluster = True
 
     def cinder_context(self) -> typing.Mapping[str, typing.Any]:
         context = dict(self.context())
@@ -162,4 +168,123 @@ class CephBackendContext(BaseBackendContext):
                 mode=0o600,
                 template_name="ceph.client.keyring.j2",
             ),
+        ]
+class HitachiBackendContext(BaseBackendContext):
+    """Render a Hitachi VSP backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'backend'
+        self.supports_cluster = False
+
+    def context(self) -> dict:
+        proto = self.cfg.get("protocol", "FC").lower()
+        driver_cls = (
+            "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver"
+            if proto == "fc"
+            else "cinder.volume.drivers.hitachi.hbsd_iscsi.HBSDISCSIDriver"
+        )
+        context = {
+            "backend_name": self.backend_name,
+            "driver_class": driver_cls,
+            **self.cfg,
+        }
+        return context
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in *cinder.conf*.  
+        Return {} to avoid duplicating the full stanza there."""
+        return {}   
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="backend.conf.j2",
+            )
+        ]
+
+
+class PureBackendContext(BaseBackendContext):
+    """Render a Pure Storage FlashArray backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'backend'
+        self.supports_cluster = True  # Pure supports clustering
+
+    def context(self) -> dict:
+        protocol = self.cfg.get("protocol", "fc").lower()
+        
+        # Driver class selection based on protocol
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.pure.PureISCSIDriver",
+            "fc": "cinder.volume.drivers.pure.PureFCDriver", 
+            "nvme": "cinder.volume.drivers.pure.PureNVMEDriver"
+        }
+        
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        
+        context = {
+            "backend_name": self.backend_name,
+            "driver_class": driver_class,
+            **self.cfg,
+        }
+        return context
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in cinder.conf. Return {} to avoid duplication."""
+        return {}
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="backend.conf.j2",
+            )
+        ]
+
+
+class DellSCBackendContext(BaseBackendContext):
+    """Render a Dell Storage Center backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        super().__init__(backend_name, backend_config)
+        self.cfg = backend_config
+        self.namespace = 'backend'
+        self.supports_cluster = False  # Dell SC does not support clustering
+
+    def context(self) -> dict:
+        protocol = self.cfg.get("protocol", "fc").lower()
+        
+        # Driver class selection based on protocol
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.dell_emc.sc.storagecenter_iscsi.SCISCSIDriver",
+            "fc": "cinder.volume.drivers.dell_emc.sc.storagecenter_fc.SCFCDriver"
+        }
+        
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        
+        context = {
+            "backend_name": self.backend_name,
+            "driver_class": driver_class,
+            **self.cfg,
+        }
+        return context
+
+    def cinder_context(self) -> dict[str, typing.Any]:
+        """Keys that land in cinder.conf. Return {} to avoid duplication."""
+        return {}
+        
+    def template_files(self) -> list[template.Template]:
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                Path("etc/cinder/cinder.conf.d"),
+                template_name="backend.conf.j2",
+            )
         ]

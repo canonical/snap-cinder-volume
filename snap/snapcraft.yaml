@@ -21,6 +21,12 @@ environment:
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
   PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
 
+layout:
+  /etc/iscsi:
+    bind: $SNAP_COMMON/etc/iscsi
+  /usr/bin/findmnt:
+    bind-file: $SNAP/usr/bin/findmnt
+
 apps:
   cinder-volume:
     environment:
@@ -32,8 +38,34 @@ apps:
     plugs:
       - network
       - network-bind
+      - network-observe
       - mount-observe
       - block-devices
+      - system-observe
+      - hardware-observe
+      - log-observe
+      - etc-iscsi
+      - nvme-identity
+      - nvme-multipath
+
+plugs:
+  etc-iscsi:
+    interface: system-files
+    read:
+      - /etc/iscsi/initiatorname.iscsi
+      - /etc/iscsi/iscsid.conf
+    write:
+      - /var/lib/iscsi
+  nvme-identity:
+    interface: system-files
+    read:
+      - /etc/nvme/hostnqn
+      - /etc/nvme/hostid
+
+  nvme-multipath:
+    interface: system-files
+    read:
+      - /sys/module/nvme_core/parameters/multipath
 
 parts:
   openstack:
@@ -48,6 +80,10 @@ parts:
       - ceph-common
       - nfs-common
       - tgt
+      - util-linux
+      - nvme-cli
+      - multipath-tools
+      - udev
     override-build: |
       craftctl default
       # purge some dangling symlinks
@@ -62,7 +98,6 @@ parts:
         rm -f "$target"
       fi
       ln -s ../sbin/iscsiadm "$target"
-
 
   cinder-volume:
     after: [openstack]
