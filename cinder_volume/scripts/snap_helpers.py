@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2024 - Canonical Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+"""Snap helpers script for filtering hooks by project."""
+
 import importlib
 import importlib.metadata
 import os

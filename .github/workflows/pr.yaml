@@ -1,0 +1,19 @@
+name: PR Global
+on:
+  pull_request:
+jobs:
+  check-signed-commits:
+    name: Check signed commits in PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check signed commits in PR
+        uses: 1Password/check-signed-commits-action@v1
+  test:
+    uses: ./.github/workflows/test-python.yaml
+    needs: [check-signed-commits]
+  build:
+    uses: ./.github/workflows/build-snap.yaml
+    needs: [test]
