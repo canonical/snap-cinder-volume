@@ -1,0 +1,40 @@
+name: TICS scan
+
+on:
+  schedule:
+    - cron: '00 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+    TICS:
+      runs-on: [self-hosted, linux, amd64, tiobe]
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Install dependencies
+          run: |
+            sudo apt update
+            sudo apt install -y tox
+            sudo snap install astral-uv --channel latest/stable --classic
+
+        - name: Run coverage tests
+          run: tox -e cover
+
+        - name: Install snap dependencies
+          run: |
+            uv sync --all-extras
+            source .venv/bin/activate
+
+        - name: TICS
+          uses: tiobe/tics-github-action@v3
+          with:
+            mode: qserver
+            viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
+            ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+            project: snap-cinder-volume
+            branchdir: ${{ env.GITHUB_WORKSPACE }}
+            installTics: true
