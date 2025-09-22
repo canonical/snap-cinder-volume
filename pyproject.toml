@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest"]
+dev = ["ruff", "mypy", "pytest", "coverage"]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
