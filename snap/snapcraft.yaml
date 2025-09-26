@@ -16,10 +16,10 @@ environment:
   PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
 
 layout:
-  /etc/iscsi:
-    bind: $SNAP_COMMON/etc/iscsi
   /usr/bin/findmnt:
     bind-file: $SNAP/usr/bin/findmnt
+  /usr/lib/multipath:
+    symlink: $SNAP/lib/multipath
 
 apps:
   cinder-volume:
@@ -38,28 +38,12 @@ apps:
       - system-observe
       - hardware-observe
       - log-observe
-      - etc-iscsi
-      - nvme-identity
-      - nvme-multipath
-
-plugs:
-  etc-iscsi:
-    interface: system-files
-    read:
-      - /etc/iscsi/initiatorname.iscsi
-      - /etc/iscsi/iscsid.conf
-    write:
-      - /var/lib/iscsi
-  nvme-identity:
-    interface: system-files
-    read:
-      - /etc/nvme/hostnqn
-      - /etc/nvme/hostid
-
-  nvme-multipath:
-    interface: system-files
-    read:
-      - /sys/module/nvme_core/parameters/multipath
+      # Commented until these plugs are available in snapd
+      # - nvme-control
+      # - iscsi-initiator
+      # - multipath-control
+      # Needed by multipath, will request it at the same times as multipath-control
+      # - process-control
 
 parts:
   openstack:
