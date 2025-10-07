@@ -3,7 +3,6 @@
 
 """Snap helpers script for filtering hooks by project."""
 
-import importlib
 import importlib.metadata
 import os
 import pathlib
