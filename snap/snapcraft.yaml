@@ -18,7 +18,7 @@ package-repositories:
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
-  PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
+  PYTHONPATH: $SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages
 
 layout:
   /usr/bin/findmnt:
@@ -30,7 +30,7 @@ apps:
   cinder-volume:
     environment:
       # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
-      PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/ceph
     command: bin/cinder_volume
     daemon: simple
@@ -46,7 +46,7 @@ apps:
       # Commented until these plugs are available in snapd
       # - nvme-control
       # - iscsi-initiator
-      # - multipath-control
+      # - dm-multipath
       # Needed by multipath, will request it at the same times as multipath-control
       # - process-control
 
