@@ -209,6 +209,16 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         if dest_file.exists():
             original_hash = hash(dest_file.read_text())
 
+        if template.conditionals:
+            if not all(cond(context) for cond in template.conditionals):
+                logging.debug(
+                    "Skipping template %s due to unmet conditionals", template.filename
+                )
+                if dest_file.exists():
+                    logging.debug("Removing existing file %s", dest_file)
+                    dest_file.unlink()
+                return False
+
         tpl = None
         template_file = template.template()
         try:
@@ -254,27 +264,36 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
             keep_trailing_newline=True,
             autoescape=jinja2.select_autoescape(),
         )
+        env.globals.update(
+            {
+                "backend_ctx": context.backend_ctx,
+                "cinder_name": context.cinder_name,
+                "cinder_ctx": context.cinder_ctx,
+            }
+        )
         modified_templates: list[template.Template] = []
         try:
-            context = self.render_context(snap)
+            ctx = self.render_context(snap)
         except Exception as e:
             logging.error("Failed to render context: %s", e)
             return modified_templates
         backend_contexts = self.backend_contexts(snap)
-        context[backend_contexts.namespace] = self._render_specific_backend_configs(
-            context, backend_contexts.context()
+        ctx[backend_contexts.namespace] = self._render_specific_backend_configs(
+            ctx, backend_contexts.context()
         )
         # process general templates
         for tpl in self.template_files():
-            if self._process_template(snap, env, tpl, context):
+            if self._process_template(snap, env, tpl, ctx):
                 modified_templates.append(tpl)
         # process backend specific templates
         for backend_context in backend_contexts.contexts.values():
-            context[backend_context.namespace] = backend_context.context()
+            ctx[context.BACKEND_CTX_KEY] = backend_context.context()
+            ctx[context.CINDER_CTX_KEY] = backend_context.backend_name  # type: ignore
             for tpl in backend_context.template_files():
-                if self._process_template(snap, env, tpl, context):
+                if self._process_template(snap, env, tpl, ctx):
                     modified_templates.append(tpl)
-            context.pop(backend_context.namespace)
+            ctx.pop(context.CINDER_CTX_KEY)
+            ctx.pop(context.BACKEND_CTX_KEY)
 
         return modified_templates
 
@@ -318,7 +337,7 @@ class GenericCinderVolume(CinderVolume[configuration.Configuration]):
             backend_ctxs: dict[str, context.BaseBackendContext] = {}
 
             # Auto-discover all backend types from configuration
-            for field_name, field_info in cfg.model_fields.items():
+            for field_name, field_info in self.config_type().model_fields.items():
                 # Skip non-backend fields
                 if not isinstance(getattr(cfg, field_name), dict):
                     continue

@@ -41,6 +41,15 @@ class DataDirectory(Directory):
     location = "data"
 
 
+ContextType = typing.Mapping[str, typing.Any]
+Conditional = typing.Callable[[ContextType], bool]
+
+
+def true_conditional(_: ContextType) -> bool:
+    """A conditional that always returns True."""
+    return True
+
+
 class Template:
     """Represents a template file to be rendered."""
 
@@ -49,6 +58,7 @@ class Template:
     mode: int
     template_name: str | None
     location: Locations
+    conditionals: typing.Sequence[Conditional]
 
     def __init__(
         self,
@@ -57,6 +67,7 @@ class Template:
         mode: int = 0o640,
         template_name: str | None = None,
         location: Locations | None = None,
+        conditionals: typing.Sequence[Conditional] = (true_conditional,),
     ):
         """Initialize template with source, destination, and options."""
         self.filename = src
@@ -68,6 +79,7 @@ class Template:
             if location is not None
             else getattr(self.__class__, "location", "common")
         )
+        self.conditionals = conditionals
 
     def rel_path(self) -> Path:
         """Return the relative path of the template."""
