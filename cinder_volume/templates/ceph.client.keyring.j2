@@ -1,2 +1,3 @@
+{%- set ceph_ctx = backend_ctx() %}
 [client.{{ ceph_ctx.rbd_user }}]
     key = {{ ceph_ctx.rbd_key }}
