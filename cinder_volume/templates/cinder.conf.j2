@@ -39,13 +39,6 @@ image_volume_cache_max_size_gb = {{ cinder.image_volume_cache_max_size_gb }}
 image_volume_cache_max_count = {{ cinder.image_volume_cache_max_count }}
 target_helper = lioadm
 
-{% for name, context in cinder_backends.contexts.items() -%}
-[{{ name }}]
-{% for key, value in context.items() -%}
-{{ key }} = {{ value }}
-{% endfor -%}
-{% endfor %}
-
 {% if settings.enable_telemetry_notifications -%}
 [oslo_messaging_notifications]
 driver = messagingv2

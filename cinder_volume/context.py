@@ -4,10 +4,11 @@
 """Context module for rendering configuration and templates."""
 
 import abc
+import collections.abc
 import pathlib
 import typing
-from pathlib import Path
 
+import jinja2
 from snaphelpers import Snap
 
 from . import error, template
@@ -53,8 +54,52 @@ class SnapPathContext(Context):
         }
 
 
+ETC_CINDER_D_CONF_DIR = pathlib.Path("etc/cinder/cinder.conf.d")
+
+CINDER_CTX_KEY = "ctx_cinder_name"
+BACKEND_CTX_KEY = "ctx_backend"
+
+
+@jinja2.pass_context
+def cinder_name(
+    ctx,
+):
+    """Get the backend configuration value."""
+    if name := ctx.get(CINDER_CTX_KEY):
+        return name
+    raise error.CinderError("No backend name in context")
+
+
+@jinja2.pass_context
+def cinder_ctx(
+    ctx,
+):
+    """Get the cinder configuration value."""
+    return ctx["cinder_backends"]["contexts"][cinder_name(ctx)]
+
+
+@jinja2.pass_context
+def backend_ctx(ctx):
+    """Get the backend configuration value."""
+    return ctx[BACKEND_CTX_KEY]
+
+
+def backend_variable_set(backend: str, *var: str) -> template.Conditional:
+    """Return a conditional that checks if a variable is set in a context namespace."""
+
+    def _conditional(context: template.ContextType) -> bool:
+        ns_context = (
+            context.get("cinder_backends", {}).get("contexts", {}).get(backend, {})
+        )
+        return all(bool(ns_context.get(v)) for v in var)
+
+    return _conditional
+
+
 class BaseBackendContext(Context):
     """Base class for backend context providers."""
+
+    _hidden_keys: typing.Sequence[str] = ("driver_ssl_cert",)
 
     def __init__(self, backend_name: str, backend_config: dict[str, typing.Any]):
         """Initialize with backend name and config."""
@@ -69,7 +114,22 @@ class BaseBackendContext(Context):
         This value is always associated to `namespace`, not
         necessarily associated with `backend_name`.
         """
-        return self.backend_config
+        context = dict(self.backend_config)
+        if context.get("driver_ssl_cert"):
+            context["driver_ssl_cert_path"] = str(
+                pathlib.Path(r"{{ snap_paths.common }}")
+                / ETC_CINDER_D_CONF_DIR
+                / f"{self.backend_name}.pem"
+            )
+            context["driver_ssl_cert_verify"] = True
+        return context
+
+    @property
+    def hidden_keys(self) -> collections.abc.Generator[str]:
+        """Keys that should not be exposed in cinder context."""
+        for klass in self.__class__.mro():
+            if issubclass(klass, BaseBackendContext):
+                yield from klass._hidden_keys
 
     def cinder_context(self) -> typing.Mapping[str, typing.Any]:
         """Context specific for cinder configuration.
@@ -77,11 +137,31 @@ class BaseBackendContext(Context):
         This value is always associated to `backend_name`, not
         necessarily associated with `namespace`.
         """
-        return self.backend_config
+        context = dict(self.context())
+        for key in self.hidden_keys:
+            context.pop(key, None)
+        return {k: v for k, v in context.items() if v is not None}
 
     def template_files(self) -> list[template.Template]:
         """Files to be templated."""
-        return []
+        return [
+            template.CommonTemplate(
+                f"{self.backend_name}.conf",
+                ETC_CINDER_D_CONF_DIR,
+                template_name="backend.conf.j2",
+            ),
+            template.CommonTemplate(
+                f"{self.backend_name}.pem",
+                ETC_CINDER_D_CONF_DIR,
+                template_name="backend.pem.j2",
+                conditionals=[
+                    backend_variable_set(
+                        self.backend_name,
+                        "driver_ssl_cert_path",
+                    )
+                ],
+            ),
+        ]
 
     def directories(self) -> list[template.Directory]:
         """Directories to be created."""
@@ -132,21 +212,12 @@ ETC_CEPH = pathlib.Path("etc/ceph")
 class CephBackendContext(BaseBackendContext):
     """Context provider for Ceph backend."""
 
-    _hidden_keys = ["rbd_key", "keyring", "mon_hosts", "auth", "backend_name"]
+    _hidden_keys = ("rbd_key", "keyring", "mon_hosts", "auth")
 
     def __init__(self, backend_name: str, backend_config: dict[str, typing.Any]):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        # Not to override global `ceph` namespace
-        self.namespace = "ceph_ctx"
         self.supports_cluster = True
-
-    def cinder_context(self) -> typing.Mapping[str, typing.Any]:
-        """Return context for cinder configuration."""
-        context = dict(self.context())
-        for key in self._hidden_keys:
-            context.pop(key, None)
-        return context
 
     def keyring(self) -> str:
         """Return the keyring filename."""
@@ -158,14 +229,13 @@ class CephBackendContext(BaseBackendContext):
 
     def context(self) -> typing.Mapping[str, typing.Any]:
         """Return full context for Ceph backend."""
-        context = {"volume_driver": "cinder.volume.drivers.rbd.RBDDriver"}
-        context.update(self.backend_config)
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.rbd.RBDDriver"
         context["rbd_ceph_conf"] = (
             r"{{ snap_paths.common }}/etc/ceph/" + self.ceph_conf()
         )
         context["keyring"] = self.keyring()
-
-        return {k: v for k, v in context.items() if v is not None}
+        return context
 
     def directories(self) -> list[template.Directory]:
         """Return directories to create."""
@@ -175,7 +245,7 @@ class CephBackendContext(BaseBackendContext):
 
     def template_files(self) -> list[template.Template]:
         """Return template files to render."""
-        return [
+        return super().template_files() + [
             template.CommonTemplate(
                 self.ceph_conf(), ETC_CEPH, template_name="ceph.conf.j2"
             ),
@@ -191,59 +261,44 @@ class CephBackendContext(BaseBackendContext):
 class HitachiBackendContext(BaseBackendContext):
     """Render a Hitachi VSP backend stanza."""
 
+    _hidden_keys = ("protocol",)
+
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        self.cfg = backend_config
-        self.namespace = "backend"
         self.supports_cluster = False
 
     def context(self) -> dict:
         """Return context for Hitachi backend."""
-        proto = self.cfg.get("protocol", "FC").lower()
+        context = dict(super().context())
+        proto = self.backend_config.get("protocol", "FC").lower()
         driver_cls = (
             "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver"
             if proto == "fc"
             else "cinder.volume.drivers.hitachi.hbsd_iscsi.HBSDISCSIDriver"
         )
-        context = {
-            "backend_name": self.backend_name,
-            "driver_class": driver_cls,
-            **self.cfg,
-        }
+        context.update(
+            {
+                "volume_driver": driver_cls,
+            }
+        )
         return context
-
-    def cinder_context(self) -> dict[str, typing.Any]:
-        """Keys that land in cinder.conf.
-
-        Return {} to avoid duplicating the full stanza there.
-        """
-        return {}
-
-    def template_files(self) -> list[template.Template]:
-        """Return template files to render."""
-        return [
-            template.CommonTemplate(
-                f"{self.backend_name}.conf",
-                Path("etc/cinder/cinder.conf.d"),
-                template_name="backend.conf.j2",
-            )
-        ]
 
 
 class PureBackendContext(BaseBackendContext):
     """Render a Pure Storage FlashArray backend stanza."""
 
+    _hidden_keys = ("protocol",)
+
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        self.cfg = backend_config
-        self.namespace = "backend"
         self.supports_cluster = True  # Pure supports clustering
 
     def context(self) -> dict:
         """Return context for Pure backend."""
-        protocol = self.cfg.get("protocol", "fc").lower()
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
 
         # Driver class selection based on protocol
         driver_classes = {
@@ -254,41 +309,28 @@ class PureBackendContext(BaseBackendContext):
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
 
-        context = {
-            "backend_name": self.backend_name,
-            "driver_class": driver_class,
-            **self.cfg,
-        }
+        context.update(
+            {
+                "volume_driver": driver_class,
+            }
+        )
         return context
-
-    def cinder_context(self) -> dict[str, typing.Any]:
-        """Keys that land in cinder.conf. Return {} to avoid duplication."""
-        return {}
-
-    def template_files(self) -> list[template.Template]:
-        """Return template files to render."""
-        return [
-            template.CommonTemplate(
-                f"{self.backend_name}.conf",
-                Path("etc/cinder/cinder.conf.d"),
-                template_name="backend.conf.j2",
-            )
-        ]
 
 
 class DellSCBackendContext(BaseBackendContext):
     """Render a Dell Storage Center backend stanza."""
 
+    _hidden_keys = ("protocol",)
+
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        self.cfg = backend_config
-        self.namespace = "backend"
         self.supports_cluster = False  # Dell SC does not support clustering
 
     def context(self) -> dict:
         """Return context for Dell SC backend."""
-        protocol = self.cfg.get("protocol", "fc").lower()
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
 
         # Driver class selection based on protocol
         driver_classes = {
@@ -300,23 +342,9 @@ class DellSCBackendContext(BaseBackendContext):
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
 
-        context = {
-            "backend_name": self.backend_name,
-            "driver_class": driver_class,
-            **self.cfg,
-        }
+        context.update(
+            {
+                "volume_driver": driver_class,
+            }
+        )
         return context
-
-    def cinder_context(self) -> dict[str, typing.Any]:
-        """Keys that land in cinder.conf. Return {} to avoid duplication."""
-        return {}
-
-    def template_files(self) -> list[template.Template]:
-        """Return template files to render."""
-        return [
-            template.CommonTemplate(
-                f"{self.backend_name}.conf",
-                Path("etc/cinder/cinder.conf.d"),
-                template_name="backend.conf.j2",
-            )
-        ]
