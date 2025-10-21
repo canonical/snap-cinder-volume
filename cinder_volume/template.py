@@ -1,16 +1,8 @@
-# Copyright 2024 Canonical Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-FileCopyrightText: 2024 - Canonical Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+"""Template and directory classes for configuration."""
+
 import typing
 from pathlib import Path
 
@@ -18,32 +10,55 @@ Locations = typing.Literal["common", "data"]
 
 
 class Directory:
+    """Represents a directory to be created."""
+
     path: Path
     mode: int
     location: Locations
 
     def __init__(
-        self, path: str | Path, mode: int = 0o750, location: Locations = "common"
+        self, path: str | Path, mode: int = 0o750, location: Locations | None = None
     ):
+        """Initialize directory with path, mode, and location."""
         self.path = Path(path)
         self.mode = mode
-        self.location = location
+        self.location = (
+            location
+            if location is not None
+            else getattr(self.__class__, "location", "common")
+        )
 
 
 class CommonDirectory(Directory):
+    """Directory in the common location."""
+
     location = "common"
 
 
 class DataDirectory(Directory):
+    """Directory in the data location."""
+
     location = "data"
 
 
+ContextType = typing.Mapping[str, typing.Any]
+Conditional = typing.Callable[[ContextType], bool]
+
+
+def true_conditional(_: ContextType) -> bool:
+    """A conditional that always returns True."""
+    return True
+
+
 class Template:
+    """Represents a template file to be rendered."""
+
     filename: str
     dest: Path
     mode: int
     template_name: str | None
     location: Locations
+    conditionals: typing.Sequence[Conditional]
 
     def __init__(
         self,
@@ -51,24 +66,37 @@ class Template:
         dest: Path,
         mode: int = 0o640,
         template_name: str | None = None,
-        location: Locations = "common",
+        location: Locations | None = None,
+        conditionals: typing.Sequence[Conditional] = (true_conditional,),
     ):
+        """Initialize template with source, destination, and options."""
         self.filename = src
         self.dest = dest
         self.mode = mode
         self.template_name = template_name
-        self.location = location
+        self.location = (
+            location
+            if location is not None
+            else getattr(self.__class__, "location", "common")
+        )
+        self.conditionals = conditionals
 
     def rel_path(self) -> Path:
+        """Return the relative path of the template."""
         return self.dest / self.template()
 
     def template(self) -> str:
+        """Return the template name or filename."""
         return self.template_name or self.filename
 
 
 class CommonTemplate(Template):
+    """Template for common location."""
+
     location = "common"
 
 
 class DataTemplate(Template):
+    """Template for data location."""
+
     location = "data"

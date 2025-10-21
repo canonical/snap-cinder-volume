@@ -13,21 +13,37 @@ confinement: strict
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
-  PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
+  PYTHONPATH: $SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages
+
+layout:
+  /usr/bin/findmnt:
+    bind-file: $SNAP/usr/bin/findmnt
+  /usr/lib/multipath:
+    symlink: $SNAP/lib/multipath
 
 apps:
   cinder-volume:
     environment:
       # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
-      PYTHONPATH: $PYTHONPATH:$SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/ceph
     command: bin/cinder_volume
     daemon: simple
     plugs:
       - network
       - network-bind
+      - network-observe
       - mount-observe
       - block-devices
+      - system-observe
+      - hardware-observe
+      - log-observe
+      # Commented until these plugs are available in snapd
+      # - nvme-control
+      # - iscsi-initiator
+      # - dm-multipath
+      # Needed by multipath, will request it at the same times as multipath-control
+      # - process-control
 
 parts:
   openstack:
@@ -42,6 +58,10 @@ parts:
       - ceph-common
       - nfs-common
       - tgt
+      - util-linux
+      - nvme-cli
+      - multipath-tools
+      - udev
     override-build: |
       craftctl default
       # purge some dangling symlinks
@@ -57,9 +77,9 @@ parts:
       fi
       ln -s ../sbin/iscsiadm "$target"
 
-
   cinder-volume:
     after: [openstack]
+    build-snaps: [astral-uv]
     plugin: python
     source: .
     build-packages:
@@ -67,6 +87,7 @@ parts:
     python-requirements:
       - requirements.txt
     override-build: |
+      uv export --frozen --no-hashes --format=requirements-txt -o requirements.txt
       craftctl default
       cinder-snap-helpers write-hooks
 

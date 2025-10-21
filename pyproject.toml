@@ -4,6 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
+dependencies = [
+    "jinja2>=3.1.6",
+    "purestorage>=1.19.0",
+    "pydantic>=2.11.7",
+    "snap-helpers",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest", "coverage"]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
@@ -15,6 +24,23 @@ packages = ["cinder_volume", "cinder_volume.scripts"]
 [tool.setuptools.package-data]
 cinder_volume = ["templates/*.j2"]
 
+[tool.uv.sources]
+snap-helpers = { git = "https://github.com/albertodonato/snap-helpers" }
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--disable-warnings",
+    "--tb=short",
+]
+
 [project.scripts]
 cinder_volume = "cinder_volume.services:cinder_volume"
 cinder-snap-helpers = "cinder_volume.scripts.snap_helpers:script"
@@ -22,3 +48,86 @@ cinder-snap-helpers = "cinder_volume.scripts.snap_helpers:script"
 [project.entry-points."snaphelpers.hooks"]
 install = "cinder_volume.cinder_volume:GenericCinderVolume.install_hook"
 configure = "cinder_volume.cinder_volume:GenericCinderVolume.configure_hook"
+
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+
+[tool.ruff]
+exclude = [
+    '*egg',
+    '*lib/python*',
+    'releasenotes',
+    'tools',
+    'build',
+    '*.egg_info',
+    'dist',
+    '__pycache__',
+    'venv',
+    '.venv',
+    '.tox',
+    'doc',
+    '.git',
+]
+output-format = "full"
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+preview = true # to enable CPY
+select = [
+    "E",   # pycodestyle
+    "W",   # pycodestyle
+    "F",   # pyflakes
+    "C",   # convention
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+    "S",   # bandit
+    "I",   # isort
+    "CPY", # flake8-copyright
+]
+ignore = [
+    # "F821",
+    "S401", # import subprocess - not necessarily a security issue; this plugin is mainly used for penetration testing workflow
+    "S404", # import subprocess - same as above
+    "S603", # process without shell - not necessarily a security issue; this plugin is mainly used for penetration testing workflow
+]
+extend-ignore = ["E203"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/*" = [
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D415",
+    "E501",
+    "N802",
+    "N803",
+    "N806",
+    "S",    # Disable bandit rules in tests
+]
+"**/__init__.py" = ["D104"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 88
+max-doc-length = 88
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-copyright]
+author = "Canonical Ltd"
+notice-rgx = "(?i)SPDX-FileCopyrightText:\\s+\\d{4}\\s+-\\s+"
+# don't enforce on empty files
+min-file-size = 1
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15

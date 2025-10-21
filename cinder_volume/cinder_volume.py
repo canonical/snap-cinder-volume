@@ -1,16 +1,11 @@
-# Copyright 2024 Canonical Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-FileCopyrightText: 2024 - Canonical Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+"""Cinder Volume Snap Service.
+
+This module provides the core CinderVolume class and related functionality
+for managing Cinder volume services within a snap environment.
+"""
 
 import abc
 import inspect
@@ -31,17 +26,22 @@ CONF = typing.TypeVar("CONF", bound=configuration.BaseConfiguration)
 
 
 class CinderVolume(typing.Generic[CONF], abc.ABC):
+    """Abstract base class for Cinder volume service implementations."""
+
     def __init__(self) -> None:
+        """Initialize the CinderVolume instance."""
         self._contexts: typing.Sequence[context.Context] | None = None
         self._backend_contexts: context.CinderBackendContexts | None = None
 
     @classmethod
     def install_hook(cls, snap: Snap) -> None:
+        """Install hook for the Cinder volume snap."""
         log.setup_logging(snap.paths.common / "hooks.log")
         cls().install(snap)
 
     @classmethod
     def configure_hook(cls, snap: Snap) -> None:
+        """Configure hook for the Cinder volume snap."""
         log.setup_logging(snap.paths.common / "hooks.log")
         try:
             cls().configure(snap)
@@ -49,11 +49,26 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
             logging.warning("Configuration not complete", exc_info=True)
 
     def install(self, snap: Snap) -> None:
+        """Install the Cinder volume service."""
         self.setup_dirs(snap)
         self.template(snap)
 
     def configure(self, snap: Snap) -> None:
-        backend_contexts = self.backend_contexts(snap)
+        """Configure the Cinder volume service."""
+        # Always clear existing backend configuration files first
+        # This ensures cleanup even when no backends are configured
+        self._clear_backend_configs(snap)
+
+        try:
+            backend_contexts = self.backend_contexts(snap)
+        except error.CinderError as e:
+            # If no backends are configured, just clear configs and exit
+            if "At least one backend must be enabled" in str(e):
+                logging.info("No backends configured, cleared all backend configs")
+                return
+            # Re-raise other configuration errors
+            raise
+
         self.setup_dirs(snap, backend_contexts)
         modified = self.template(snap)
         backend_tpls = []
@@ -68,6 +83,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         modified_tpl: typing.Sequence[template.Template],
         backend_tpls: typing.Sequence[template.Template],
     ) -> None:
+        """Start the Cinder volume services."""
         modified_files: set[Path] = set()
         for tpl in modified_tpl:
             modified_files.add(tpl.rel_path())
@@ -93,14 +109,17 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
 
     @abc.abstractmethod
     def config_type(self) -> typing.Type[CONF]:
+        """Return the configuration type."""
         raise NotImplementedError
 
     def get_config(self, snap: Snap) -> CONF:
+        """Get the configuration for the snap."""
+        logging.debug("Getting configuration")
         keys = self.config_type().model_fields.keys()
+        all_config = snap.config.get_options(*keys).as_dict()
+
         try:
-            return self.config_type().model_validate(
-                snap.config.get_options(*keys).as_dict()
-            )
+            return self.config_type().model_validate(all_config)
         except pydantic.ValidationError as e:
             raise error.CinderError("Invalid configuration") from e
 
@@ -139,6 +158,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
     def render_context(
         self, snap: Snap
     ) -> typing.MutableMapping[str, typing.Mapping[str, str]]:
+        """Render the context for the snap."""
         context = {}
         for ctx in self.contexts(snap):
             logging.debug("Adding context: %s", ctx.namespace)
@@ -148,6 +168,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
     def setup_dirs(
         self, snap: Snap, backend_contexts: context.CinderBackendContexts | None = None
     ) -> None:
+        """Set up directories for the snap."""
         directories = self.directories()
         if backend_contexts:
             for backend_context in backend_contexts.contexts.values():
@@ -160,6 +181,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
             path.chmod(d.mode)
 
     def templates_search_path(self, snap: Snap) -> list[Path]:
+        """Get the search path for templates."""
         try:
             extra = [Path(inspect.getfile(self.__class__)).parent / "templates"]
         except Exception:
@@ -186,6 +208,16 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         original_hash = None
         if dest_file.exists():
             original_hash = hash(dest_file.read_text())
+
+        if template.conditionals:
+            if not all(cond(context) for cond in template.conditionals):
+                logging.debug(
+                    "Skipping template %s due to unmet conditionals", template.filename
+                )
+                if dest_file.exists():
+                    logging.debug("Removing existing file %s", dest_file)
+                    dest_file.unlink()
+                return False
 
         tpl = None
         template_file = template.template()
@@ -226,52 +258,109 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         return value
 
     def template(self, snap: Snap) -> list[template.Template]:
+        """Render templates for the Cinder volume service."""
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(searchpath=self.templates_search_path(snap)),
             keep_trailing_newline=True,
+            autoescape=jinja2.select_autoescape(),
+        )
+        env.globals.update(
+            {
+                "backend_ctx": context.backend_ctx,
+                "cinder_name": context.cinder_name,
+                "cinder_ctx": context.cinder_ctx,
+            }
         )
         modified_templates: list[template.Template] = []
         try:
-            context = self.render_context(snap)
+            ctx = self.render_context(snap)
         except Exception as e:
             logging.error("Failed to render context: %s", e)
             return modified_templates
         backend_contexts = self.backend_contexts(snap)
-        context[backend_contexts.namespace] = self._render_specific_backend_configs(
-            context, backend_contexts.context()
+        ctx[backend_contexts.namespace] = self._render_specific_backend_configs(
+            ctx, backend_contexts.context()
         )
         # process general templates
         for tpl in self.template_files():
-            if self._process_template(snap, env, tpl, context):
+            if self._process_template(snap, env, tpl, ctx):
                 modified_templates.append(tpl)
         # process backend specific templates
         for backend_context in backend_contexts.contexts.values():
-            context[backend_context.namespace] = backend_context.context()
+            ctx[context.BACKEND_CTX_KEY] = backend_context.context()
+            ctx[context.CINDER_CTX_KEY] = backend_context.backend_name  # type: ignore
             for tpl in backend_context.template_files():
-                if self._process_template(snap, env, tpl, context):
+                if self._process_template(snap, env, tpl, ctx):
                     modified_templates.append(tpl)
-            context.pop(backend_context.namespace)
+            ctx.pop(context.CINDER_CTX_KEY)
+            ctx.pop(context.BACKEND_CTX_KEY)
 
         return modified_templates
 
+    def _clear_backend_configs(self, snap: Snap) -> None:
+        """Clear all existing backend configuration files.
+
+        This ensures that when backends are removed from configuration,
+        their template files are also removed from the filesystem.
+        """
+        backend_config_dir = snap.paths.common / "etc/cinder/cinder.conf.d"
+        if not backend_config_dir.exists():
+            return
+
+        # Remove all .conf files in cinder.conf.d directory
+        # These are backend-specific configuration files
+        for conf_file in backend_config_dir.glob("*.conf"):
+            try:
+                logging.debug("Removing backend config file: %s", conf_file)
+                conf_file.unlink()
+            except OSError as e:
+                logging.warning(
+                    "Failed to remove backend config file %s: %s", conf_file, e
+                )
+
 
 class GenericCinderVolume(CinderVolume[configuration.Configuration]):
+    """Generic implementation of Cinder volume service."""
+
     def config_type(self) -> typing.Type[configuration.Configuration]:
+        """Return the configuration type."""
         return configuration.Configuration
 
     def backend_contexts(self, snap: Snap) -> context.CinderBackendContexts:
-        """Instanciated backend context."""
+        """Instantiated backend context using fully dynamic discovery."""
         if self._backend_contexts is None:
             try:
-                config = self.get_config(snap)
+                cfg = self.get_config(snap)
             except pydantic.ValidationError as e:
                 raise error.CinderError("Invalid configuration") from e
-            backends = {
-                name: context.CephBackendContext(name, backend_config.model_dump())
-                for name, backend_config in config.ceph.items()
-            }
+
+            backend_ctxs: dict[str, context.BaseBackendContext] = {}
+
+            # Auto-discover all backend types from configuration
+            for field_name, field_info in self.config_type().model_fields.items():
+                # Skip non-backend fields
+                if not isinstance(getattr(cfg, field_name), dict):
+                    continue
+
+                # Get the context class name by convention: {Backend}BackendContext
+                context_class_name = f"{field_name.title()}BackendContext"
+
+                # Get the context class from the context module
+                if hasattr(context, context_class_name):
+                    context_class = getattr(context, context_class_name)
+                    backend_configs = getattr(cfg, field_name)
+
+                    # Instantiate contexts for all backends of this type
+                    for name, be_cfg in backend_configs.items():
+                        backend_ctxs[name] = context_class(name, be_cfg.model_dump())
+                else:
+                    logging.warning(
+                        f"Context class {context_class_name} not"
+                        f" found for backend type {field_name}"
+                    )
+
             self._backend_contexts = context.CinderBackendContexts(
-                enabled_backends=list(backends.keys()),
-                contexts=backends,
+                enabled_backends=list(backend_ctxs.keys()),
+                contexts=backend_ctxs,
             )
         return self._backend_contexts

@@ -16,7 +16,7 @@ cinder_internal_tenant_user_id = {{ cinder.user_id }}
 {% if cinder.default_volume_type is defined %}
 default_volume_type = {{ cinder.default_volume_type }}
 {% endif %}
-{% if cinder.cluster is defined and cinder.cluster %}
+{% if cinder.cluster is defined and cinder.cluster and cinder.cluster_ok %}
 cluster = {{ cinder.cluster }}
 {% endif %}
 enabled_backends = {{ cinder_backends.enabled_backends }}
@@ -38,13 +38,6 @@ image_volume_cache_enabled = {{ cinder.image_volume_cache_enabled }}
 image_volume_cache_max_size_gb = {{ cinder.image_volume_cache_max_size_gb }}
 image_volume_cache_max_count = {{ cinder.image_volume_cache_max_count }}
 target_helper = lioadm
-
-{% for name, context in cinder_backends.contexts.items() -%}
-[{{ name }}]
-{% for key, value in context.items() -%}
-{{ key }} = {{ value }}
-{% endfor -%}
-{% endfor %}
 
 {% if settings.enable_telemetry_notifications -%}
 [oslo_messaging_notifications]

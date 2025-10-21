@@ -1,0 +1,6 @@
+{# Generic backend stanza template for cinder.conf.d
+   Dynamically renders all key-value pairs from configuration for any storage backend #}
+[{{ cinder_name() }}]
+{%- for key, value in cinder_ctx().items() %}
+{{ key }} = {{ value }}
+{%- endfor %}

@@ -1,0 +1,12 @@
+name: Build Snap
+on:
+  workflow_call:
+jobs:
+  build:
+    name: Build snap
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Build snap locally
+        uses: canonical/action-build@v1.3.0
