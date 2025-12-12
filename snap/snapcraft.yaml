@@ -25,6 +25,8 @@ layout:
     bind-file: $SNAP/usr/bin/findmnt
   /usr/lib/multipath:
     symlink: $SNAP/lib/multipath
+  /etc/ceph:
+    symlink: $SNAP_COMMON/etc/ceph
 
 apps:
   cinder-volume:
