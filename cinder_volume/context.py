@@ -261,7 +261,7 @@ class CephBackendContext(BaseBackendContext):
 class HitachiBackendContext(BaseBackendContext):
     """Render a Hitachi VSP backend stanza."""
 
-    _hidden_keys = ("protocol",)
+    _hidden_keys = ("protocol", "hitachi_mirror_driver_ssl_cert")
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -282,7 +282,36 @@ class HitachiBackendContext(BaseBackendContext):
                 "volume_driver": driver_cls,
             }
         )
+        if "chap_username" in context:
+            context["use_chap_auth"] = True
+        if "hitachi_mirror_auth_username" in context:
+            context["hitachi_mirror_use_chap_auth"] = True
+        if context.get("hitachi_mirror_driver_ssl_cert"):
+            context["hitachi_mirror_ssl_cert_path"] = str(
+                pathlib.Path(r"{{ snap_paths.common }}")
+                / ETC_CINDER_D_CONF_DIR
+                / f"{self.backend_name}_mirror.pem"
+            )
+            context["hitachi_mirror_ssl_cert_verify"] = True
         return context
+
+    def template_files(self) -> list[template.Template]:
+        """Files to be templated."""
+        return super().template_files() + [
+            template.CommonTemplate(
+                f"{self.backend_name}_mirror.pem",
+                ETC_CINDER_D_CONF_DIR,
+                # TODO: find a better pattern when multiple backends
+                # also need a second certificate for the driver
+                template_name="hitachi_backend.pem.j2",
+                conditionals=[
+                    backend_variable_set(
+                        self.backend_name,
+                        "hitachi_mirror_ssl_cert_path",
+                    )
+                ],
+            ),
+        ]
 
 
 class PureBackendContext(BaseBackendContext):
