@@ -184,3 +184,22 @@ sudo snap set cinder-volume \
   pure.flasharray1.protocol=iscsi \
   pure.flasharray1.pure-host-personality=esxi \
   pure.flasharray1.pure-iscsi-cidr=10.0.0.0/24
+
+
+### Dell PowerStore (backend)
+
+Configure one or more Dell PowerStore backends using the `dellpowerstore.<backend-name>.*` namespace:
+
+**Required options:**
+* `dellpowerstore.<backend-name>.volume-backend-name`  Unique name for this backend
+* `dellpowerstore.<backend-name>.san-ip`               Dell PowerStore management IP/FQDN 
+* `dellpowerstore.<backend-name>.san-login`            Dell PowerStore management username 
+* `dellpowerstore.<backend-name>.san-password`         Dell PowerStore management password
+
+**Protocol configuration:**
+* `dellpowerstore.<backend-name>.storage-protocol`     Protocol (`iscsi`, `fc`) – default `fc`
+
+**Driver options:**
+* `dellpowerstore.<backend-name>.powerstore-nvme`      Enable connection using NVMe-OF
+* `dellpowerstore.<backend-name>.powerstore-ports`     Comma separated list of PowerStore iSCSI IPs or FC WWNs. All ports are allowed by default.
+* `dellpowerstore.<backend-name>.replication-device`   Replication configuration. Must follow the format: backend_id:<backend_id>,san_ip:<san_ip>,san_login:<san_login>,san_password:<san_password>
