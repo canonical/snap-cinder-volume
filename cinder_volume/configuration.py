@@ -183,6 +183,27 @@ class DellSCConfiguration(BaseBackendConfiguration):
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
+class DellpowerstoreConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell PowerStore** Cinder driver.
+
+    This configuration supports iSCSI, Fibre Channel and NVMe-TCP protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # Dell PowerStore management IP/FQDN
+    san_login: str  # Dell PowerStore management username
+    san_password: str  # Dell PowerStore management password
+    storage_protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -194,6 +215,7 @@ class Configuration(BaseConfiguration):
     hitachi: dict[str, HitachiConfiguration] = {}
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
+    dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
