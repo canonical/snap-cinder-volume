@@ -203,3 +203,22 @@ Configure one or more Dell PowerStore backends using the `dellpowerstore.<backen
 * `dellpowerstore.<backend-name>.powerstore-nvme`      Enable connection using NVMe-OF
 * `dellpowerstore.<backend-name>.powerstore-ports`     Comma separated list of PowerStore iSCSI IPs or FC WWNs. All ports are allowed by default.
 * `dellpowerstore.<backend-name>.replication-device`   Replication configuration. Must follow the format: backend_id:<backend_id>,san_ip:<san_ip>,san_login:<san_login>,san_password:<san_password>
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  dellpowerstore.powerstore1.volume-backend-name=powerstore1 \
+  dellpowerstore.powerstore1.san-ip=10.20.30.40 \
+  dellpowerstore.powerstore1.san-login=admin \
+  dellpowerstore.powerstore1.san-password=password \
+  dellpowerstore.powerstore1.storage-protocol=iscsi 
+
+If replication is required the above snippet will looks similar to the following:
+```bash
+sudo snap set cinder-volume \
+  dellpowerstore.powerstore1.volume-backend-name=powerstore1 \
+  dellpowerstore.powerstore1.san-ip=10.20.30.40 \
+  dellpowerstore.powerstore1.san-login=admin \
+  dellpowerstore.powerstore1.san-password=password \
+  dellpowerstore.powerstore1.storage-protocol=iscsi \
+  dellpowerstore.powerstore1.replication-device='backend_id:powerstore1_rep,san_ip:10.20.30.50,san_login:admin,san_password:password'
