@@ -184,7 +184,7 @@ sudo snap set cinder-volume \
   pure.flasharray1.protocol=iscsi \
   pure.flasharray1.pure-host-personality=esxi \
   pure.flasharray1.pure-iscsi-cidr=10.0.0.0/24
-
+```
 
 ### Dell PowerStore (backend)
 
@@ -212,6 +212,7 @@ sudo snap set cinder-volume \
   dellpowerstore.powerstore1.san-login=admin \
   dellpowerstore.powerstore1.san-password=password \
   dellpowerstore.powerstore1.storage-protocol=iscsi 
+```
 
 If replication is required the above snippet will looks similar to the following:
 ```bash
@@ -222,3 +223,4 @@ sudo snap set cinder-volume \
   dellpowerstore.powerstore1.san-password=password \
   dellpowerstore.powerstore1.storage-protocol=iscsi \
   dellpowerstore.powerstore1.replication-device='backend_id:powerstore1_rep,san_ip:10.20.30.50,san_login:admin,san_password:password'
+```
