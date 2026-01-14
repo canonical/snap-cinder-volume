@@ -201,7 +201,7 @@ class DellpowerstoreConfiguration(BaseBackendConfiguration):
     san_ip: pydantic.IPvAnyAddress  # Dell PowerStore management IP/FQDN
     san_login: str  # Dell PowerStore management username
     san_password: str  # Dell PowerStore management password
-    storage_protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
 class Configuration(BaseConfiguration):
