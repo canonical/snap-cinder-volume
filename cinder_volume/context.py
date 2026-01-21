@@ -377,3 +377,30 @@ class DellSCBackendContext(BaseBackendContext):
             }
         )
         return context
+
+
+class DellpowerstoreBackendContext(BaseBackendContext):
+    """Render a Dell PowerStore backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False
+
+    def context(self) -> dict:
+        """Return context for Dell PowerStore backend."""
+        context = dict(super().context())
+
+        # Driver class selection
+        # Note that the class doesn't change across the configured protocols
+        driver_class = "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver"
+
+        context.update(
+            {
+                "volume_driver": driver_class,
+                "storage_protocol": self.backend_config.get("protocol", "fc").lower(),
+            }
+        )
+        return context
