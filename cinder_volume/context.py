@@ -395,7 +395,9 @@ class DellpowerstoreBackendContext(BaseBackendContext):
 
         # Driver class selection
         # Note that the class doesn't change across the configured protocols
-        driver_class = "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver"
+        driver_class = (
+                "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver"
+        )
 
         context.update(
             {
