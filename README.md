@@ -184,6 +184,7 @@ sudo snap set cinder-volume \
   pure.flasharray1.protocol=iscsi \
   pure.flasharray1.pure-host-personality=esxi \
   pure.flasharray1.pure-iscsi-cidr=10.0.0.0/24
+```
 
 ### Dell PowerStore (backend)
 
