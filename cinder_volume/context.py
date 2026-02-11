@@ -351,7 +351,7 @@ class PureBackendContext(BaseBackendContext):
         return context
 
 
-class DellSCBackendContext(BaseBackendContext):
+class DellscBackendContext(BaseBackendContext):
     """Render a Dell Storage Center backend stanza."""
 
     _hidden_keys = ("protocol",)
