@@ -52,6 +52,7 @@ parts:
   openstack:
     plugin: nil
     stage-packages:
+      - python3-3parclient
       - python3-cinder
       - cinder-volume
       - sysfsutils

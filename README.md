@@ -260,3 +260,63 @@ sudo snap set cinder-volume \
   dellpowerstore.powerstore1.protocol=iscsi \
   dellpowerstore.powerstore1.replication-device='backend_id:powerstore1_rep,san_ip:10.20.30.50,san_login:admin,san_password:password'
 ```
+
+
+### HPE 3Par Driver (backend)
+
+Configure one or more HPE 3Par backends using the `hpe3par.<backend-name>.*` namespace:
+
+**Required options:**
+* `hpe3par.<backend-name>.volume-backend-name`  Unique name for this backend
+* `hpe3par.<backend-name>.san-ip`               HPE 3Par management IP
+* `hpe3par.<backend-name>.san-login`            HPE 3Par management username 
+* `hpe3par.<backend-name>.san-password`         HPE 3Par management password
+
+**Protocol configuration:**
+* `hpe3par.<backend-name>.protocol`     Protocol (`iscsi`, `fc`) – default `fc`
+
+**Driver options:**
+* `hpe3par.<backend-name>.hpe3par-api-url`       HPE 3Par WSAPI url
+* `hpe3par.<backend-name>.hpe3par-username`      HPE 3Par user with admin role
+* `hpe3par.<backend-name>.hpe3par-password`      HPE 3Par password for the specified user
+* `hpe3par.<backend-name>.hpe3par-cpg`           HPE 3Par list of CPG(s) to use for volume creation
+* `hpe3par.<backend-name>.hpe3par-target-nsp`    HPE 3Par The nsp of the backend to be used
+* `hpe3par.<backend-name>.hpe3par-debug`         HPE 3Par enable debug for WSAPI calls
+* `hpe3par.<backend-name>.replication-device`    Replication configuration. Must follow the format: backend_id:<backend_id>,san_ip:<san_ip>,san_login:<san_login>,san_password:<san_password>,...
+
+**Snapshot options**
+* `hpe3par.<backend-name>.hpe3par-snapshot-retention`     HPE 3Par snapshot retention time in hours
+* `hpe3par.<backend-name>.hpe3par-snapshot-expiration`    HPE 3Par snapshot expiration time in hours
+* `hpe3par.<backend-name>.hpe3par-cpg-snap`      HPE 3Par list of CPG(s) to use for snapshot volume creation
+
+**iSCSI options**
+* `hpe3par.<backend-name>.hpe3par-iscsi-ips`    HPE 3Par list of iSCSI addresses:[port] to use
+* `hpe3par.<backend-name>.hpe3par-iscsi-chap-enabled`     HPE 3Par enable CHAP authentication for iSCSI connections
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  hpe3par.backend1.volume-backend-name=backend1\
+  hpe3par.backend1.san-ip=10.20.30.40 \
+  hpe3par.backend1.san-login=admin \
+  hpe3par.backend1.san-password=password \
+  hpe3par.backend1.hpe3par-api-url=https://10.20.30.40:8080/api/v1 \
+  hpe3par.backend1.hpe3par-username=edit3par \
+  hpe3par.backend1.hpe3par-password=editpassword \
+  hpe3par.backend1.hpe3par-iscsi-ips=10.20.30.40:3261,10.20.30.50 \
+  hpe3par.backend1.storage-protocol=iscsi 
+```
+
+If replication is required the above snippet will looks similar to the following:
+```bash
+sudo snap set cinder-volume \
+  hpe3par.backend1.volume-backend-name=backend1\
+  hpe3par.backend1.san-ip=10.20.30.40 \
+  hpe3par.backend1.san-login=admin \
+  hpe3par.backend1.san-password=password \
+  hpe3par.backend1.hpe3par-api-url=https://10.20.30.40:8080/api/v1 \
+  hpe3par.backend1.hpe3par-username=edit3par \
+  hpe3par.backend1.hpe3par-password=editpassword \
+  hpe3par.backend1.protocol=fc \
+  hpe3par.backend1.replication-device='backend_id:backend1,replication_mode:sync,quorum_withness_ip:10.20.30.60,san_ip:10.20.30.50,san_login:admin,san_password:password,hpe3par_api_url:http://10.20.30.50/api/v1,hpe3par_username=admin,hpe3par_password=password'
+```
