@@ -186,6 +186,42 @@ sudo snap set cinder-volume \
   pure.flasharray1.pure-iscsi-cidr=10.0.0.0/24
 ```
 
+### Dell SC (backend)
+
+Configure one or more Dell SC backends using the `dellsc.<backend-name>.*` namespace:
+
+**Required options:**
+* `dellsc.<backend-name>.volume-backend-name`  Unique name for this backend
+* `dellsc.<backend-name>.san-ip`               Dell DSM management IP
+* `dellsc.<backend-name>.san-login`            Dell DSM management username
+* `dellsc.<backend-name>.san-password`         Dell DSM management password
+* `dellsc.<backend-name>.dell-sc-ssn`          Storage Center system serial number
+
+**Protocol and driver options:**
+* `dellsc.<backend-name>.protocol`                    Protocol (`fc` or `iscsi`) – default `fc`
+* `dellsc.<backend-name>.enable-unsupported-driver`  Must be `true` for Dell SC
+
+**Optional settings:**
+* `dellsc.<backend-name>.dell-sc-api-port`          Dell SC API port (default `3033`)
+* `dellsc.<backend-name>.dell-sc-server-folder`     Server folder (default `openstack`)
+* `dellsc.<backend-name>.dell-sc-volume-folder`     Volume folder (default `openstack`)
+* `dellsc.<backend-name>.dell-sc-verify-cert`       Verify HTTPS certs (default `false`)
+* `dellsc.<backend-name>.secondary-san-ip`          Secondary Dell DSM management IP
+* `dellsc.<backend-name>.secondary-san-login`       Secondary Dell DSM username
+* `dellsc.<backend-name>.secondary-san-password`    Secondary Dell DSM password
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  dellsc.dellsc01.volume-backend-name=dellsc01 \
+  dellsc.dellsc01.san-ip=10.20.20.3 \
+  dellsc.dellsc01.san-login=admin \
+  dellsc.dellsc01.san-password=secret \
+  dellsc.dellsc01.dell-sc-ssn=64702 \
+  dellsc.dellsc01.protocol=fc \
+  dellsc.dellsc01.enable-unsupported-driver=true
+```
+
 ### Dell PowerStore (backend)
 
 Configure one or more Dell PowerStore backends using the `dellpowerstore.<backend-name>.*` namespace:

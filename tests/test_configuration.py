@@ -116,3 +116,53 @@ class TestCinderConfiguration:
         )
         assert config.project_id == "test-project"
         assert config.user_id == "test-user"
+
+
+class TestDellSCConfiguration:
+    """Test the DellSCConfiguration class."""
+
+    def test_dellsc_requires_dell_sc_ssn(self):
+        """Test dell-sc-ssn is required for DellSC backends."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellSCConfiguration(
+                **{
+                    "volume-backend-name": "dellsc01",
+                    "san-ip": "10.0.0.10",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "enable-unsupported-driver": True,
+                }
+            )
+
+    def test_dellsc_enable_unsupported_driver_must_be_true(self):
+        """Test enable-unsupported-driver cannot be set to false."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellSCConfiguration(
+                **{
+                    "volume-backend-name": "dellsc01",
+                    "san-ip": "10.0.0.10",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "dell-sc-ssn": 64702,
+                    "enable-unsupported-driver": False,
+                }
+            )
+
+    def test_dellsc_accepts_valid_configuration(self):
+        """Test valid DellSC backend configuration."""
+        config = configuration.DellSCConfiguration(
+            **{
+                "volume-backend-name": "dellsc01",
+                "san-ip": "10.0.0.10",
+                "san-login": "admin",
+                "san-password": "secret",
+                "dell-sc-ssn": 64702,
+                "protocol": "fc",
+                "enable-unsupported-driver": True,
+                "secondary-san-ip": "10.0.0.11",
+                "secondary-san-login": "admin2",
+                "secondary-san-password": "secret2",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.10"
+        assert config.dell_sc_ssn == 64702
