@@ -406,3 +406,31 @@ class DellpowerstoreBackendContext(BaseBackendContext):
             }
         )
         return context
+
+
+class HPEthreeparBackendContext(BaseBackendContext):
+    """Render a HPE 3Par backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False
+
+    def context(self) -> dict:
+        """Return context for HPE 3Par backend."""
+        context = dict(super().context())
+
+        protocol = self.backend_config.get("protocol", "fc").lower()
+        driver_classes = {
+            "fc": "cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver",
+            "iscsi": "cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver",
+        }
+
+        context.update(
+            {
+                "volume_driver": driver_classes[protocol],
+            }
+        )
+        return context
