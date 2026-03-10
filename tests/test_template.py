@@ -97,6 +97,13 @@ class TestTemplate:
         )
         assert tpl.template() == "custom.j2"
 
+    def test_template_output_path(self):
+        """Test the rendered output path."""
+        tpl = template.Template(
+            src="test.j2", dest=Path("/dest"), template_name="custom.j2"
+        )
+        assert tpl.output_path() == Path("/dest/test")
+
 
 class TestCommonTemplate:
     """Test the CommonTemplate class."""

@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 - Canonical Ltd
 # SPDX-License-Identifier: Apache-2.0
 
+import pydantic
 import pytest
 
 from cinder_volume import configuration
@@ -32,6 +33,20 @@ class TestParentConfig:
         """Test that ParentConfig has the correct model configuration."""
         config = configuration.ParentConfig()
         assert hasattr(config, "model_config")
+
+
+class TestCAConfiguration:
+    """Test the CAConfiguration class."""
+
+    def test_ca_bundle_is_decoded(self):
+        """Valid base64 should be decoded to PEM content."""
+        config = configuration.CAConfiguration(bundle="VEVTVF9DQQ==")
+        assert config.bundle == "TEST_CA"
+
+    def test_ca_bundle_rejects_invalid_base64(self):
+        """Invalid base64 input should fail validation."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.CAConfiguration(bundle="not-base64")
 
 
 class TestDatabaseConfiguration:

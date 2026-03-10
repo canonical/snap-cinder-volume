@@ -96,6 +96,11 @@ def backend_variable_set(backend: str, *var: str) -> template.Conditional:
     return _conditional
 
 
+def ca_bundle_set(config: template.ContextType) -> bool:
+    """Return whether a main CA bundle is available in template context."""
+    return bool(config.get("ca", {}).get("bundle"))
+
+
 class BaseBackendContext(Context):
     """Base class for backend context providers."""
 

@@ -7,6 +7,9 @@ This module holds the definition of all configuration options the snap
 takes as input from `snap set`.
 """
 
+import base64
+import binascii
+
 import pydantic
 import pydantic.alias_generators
 from pydantic import Field
@@ -59,6 +62,24 @@ class Settings(ParentConfig):
     enable_telemetry_notifications: bool = False
 
 
+class CAConfiguration(ParentConfig):
+    """Configuration for the main CA bundle used by the snap."""
+
+    bundle: str | None = None
+
+    @pydantic.field_validator("bundle", mode="before")
+    @classmethod
+    def decode_bundle(cls, value: str | None) -> str | None:
+        """Decode the base64-encoded bundle payload from snap config."""
+        if value is None or value == "":
+            return None
+        value = value.strip()
+        try:
+            return base64.b64decode(value, validate=True).decode()
+        except (binascii.Error, ValueError, UnicodeDecodeError) as exc:
+            raise ValueError("Invalid base64-encoded CA bundle") from exc
+
+
 class BaseConfiguration(ParentConfig):
     """Base configuration class.
 
@@ -66,6 +87,7 @@ class BaseConfiguration(ParentConfig):
     """
 
     settings: Settings = Settings()
+    ca: CAConfiguration = CAConfiguration()
     database: DatabaseConfiguration
     rabbitmq: RabbitMQConfiguration
     cinder: CinderConfiguration

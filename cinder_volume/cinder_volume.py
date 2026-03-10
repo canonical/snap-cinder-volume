@@ -20,6 +20,7 @@ from snaphelpers import Snap
 from . import configuration, context, error, log, services, template
 
 ETC_CINDER = Path("etc/cinder")
+ETC_SSL_CERTS = Path("etc/ssl/certs")
 
 
 CONF = typing.TypeVar("CONF", bound=configuration.BaseConfiguration)
@@ -86,10 +87,10 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         """Start the Cinder volume services."""
         modified_files: set[Path] = set()
         for tpl in modified_tpl:
-            modified_files.add(tpl.rel_path())
+            modified_files.add(tpl.output_path())
         backend_files: set[Path] = set()
         for tpl in backend_tpls:
-            backend_files.add(tpl.rel_path())
+            backend_files.add(tpl.output_path())
         snap_services = snap.services.list()
         for service in services.services():
             snap_service = snap_services.get(service.name)
@@ -98,7 +99,9 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
                 continue
 
             common = modified_files.intersection(
-                set(service.configuration_files) | backend_files
+                set(service.configuration_files)
+                | set(service.restart_trigger_files)
+                | backend_files
             )
             if common:
                 logging.debug("Restarting service %s", service.name)
@@ -128,6 +131,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         return [
             template.CommonDirectory("etc/cinder"),
             template.CommonDirectory("etc/cinder/cinder.conf.d"),
+            template.CommonDirectory(ETC_SSL_CERTS),
             template.CommonDirectory("lib/cinder"),
         ]
 
@@ -136,6 +140,12 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         return [
             template.CommonTemplate("cinder.conf", ETC_CINDER),
             template.CommonTemplate("rootwrap.conf", ETC_CINDER),
+            template.CommonTemplate(
+                "receive-ca-bundle.pem",
+                ETC_SSL_CERTS,
+                template_name="receive-ca-bundle.pem.j2",
+                conditionals=[context.ca_bundle_set],
+            ),
         ]
 
     @abc.abstractmethod
