@@ -75,3 +75,59 @@ class TestGenericCinderVolume:
             "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
             "receive-ca-bundle.pem" in rendered
         )
+
+    def test_cinder_conf_renders_cluster_when_supported_and_set(self):
+        """Cluster should be rendered when all enabled backends support it."""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                Path(cinder_volume.__file__).parent / "templates"
+            )
+        )
+
+        rendered = env.get_template("cinder.conf.j2").render(
+            snap_paths={"common": "/var/snap/cinder-volume/common"},
+            settings={"debug": False, "enable_telemetry_notifications": False},
+            rabbitmq={"url": "amqp://guest:guest@localhost:5672/"},
+            database={"url": "mysql://cinder:secret@db/cinder"},
+            cinder={
+                "project_id": "project-id",
+                "user_id": "user-id",
+                "cluster": "cinder-cluster-a",
+                "default_volume_type": None,
+                "image_volume_cache_enabled": False,
+                "image_volume_cache_max_size_gb": 0,
+                "image_volume_cache_max_count": 0,
+            },
+            ca={"bundle": None},
+            cinder_backends={"enabled_backends": "ceph", "cluster_ok": True},
+        )
+
+        assert "cluster = cinder-cluster-a" in rendered
+
+    def test_cinder_conf_skips_cluster_when_backend_does_not_support_it(self):
+        """Cluster should not be rendered when any enabled backend blocks it."""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                Path(cinder_volume.__file__).parent / "templates"
+            )
+        )
+
+        rendered = env.get_template("cinder.conf.j2").render(
+            snap_paths={"common": "/var/snap/cinder-volume/common"},
+            settings={"debug": False, "enable_telemetry_notifications": False},
+            rabbitmq={"url": "amqp://guest:guest@localhost:5672/"},
+            database={"url": "mysql://cinder:secret@db/cinder"},
+            cinder={
+                "project_id": "project-id",
+                "user_id": "user-id",
+                "cluster": "cinder-cluster-a",
+                "default_volume_type": None,
+                "image_volume_cache_enabled": False,
+                "image_volume_cache_max_size_gb": 0,
+                "image_volume_cache_max_count": 0,
+            },
+            ca={"bundle": None},
+            cinder_backends={"enabled_backends": "hitachi", "cluster_ok": False},
+        )
+
+        assert "cluster = cinder-cluster-a" not in rendered
