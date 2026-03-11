@@ -36,6 +36,7 @@ class OpenStackService:
     # on modification
     configuration_files: typing.Sequence[Path] = []
     configuration_directories: typing.Sequence[Path] = []
+    restart_trigger_files: typing.Sequence[Path] = []
     extra_args: typing.Sequence[str] = []
 
     name: str
@@ -93,6 +94,7 @@ class CinderVolume(OpenStackService):
         Path("etc/cinder/rootwrap.conf"),
     ]
     configuration_directories = [Path("etc/cinder/cinder.conf.d")]
+    restart_trigger_files = [Path("etc/ssl/certs/receive-ca-bundle.pem")]
     name = "cinder-volume"
     executable = Path("usr/bin/cinder-volume")
 
