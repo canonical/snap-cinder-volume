@@ -45,7 +45,7 @@ class TestGenericCinderVolume:
         snap_service.start.assert_not_called()
 
     def test_cinder_conf_renders_cafile_when_ca_bundle_exists(self):
-        """The base template should reference the rendered CA bundle file."""
+        """The template should render CA settings in the service-specific sections."""
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
                 Path(cinder_volume.__file__).parent / "templates"
@@ -75,6 +75,61 @@ class TestGenericCinderVolume:
             "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
             "receive-ca-bundle.pem" in rendered
         )
+        assert (
+            "glance_ca_certificates_file = "
+            "/var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
+            in rendered
+        )
+        assert "glance_api_insecure = false" in rendered
+        assert (
+            "\n[nova]\n"
+            "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
+            "receive-ca-bundle.pem" in rendered
+        )
+        assert (
+            "\n[barbican]\n"
+            "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
+            "receive-ca-bundle.pem" in rendered
+        )
+        assert (
+            "\n[glance]\n"
+            "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
+            "receive-ca-bundle.pem" in rendered
+        )
+        assert "enabled_backends = ceph\ncafile =" not in rendered
+
+    def test_cinder_conf_skips_ca_sections_when_ca_bundle_missing(self):
+        """The template should omit service-specific CA settings without a CA bundle."""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                Path(cinder_volume.__file__).parent / "templates"
+            )
+        )
+
+        rendered = env.get_template("cinder.conf.j2").render(
+            snap_paths={"common": "/var/snap/cinder-volume/common"},
+            settings={"debug": False, "enable_telemetry_notifications": False},
+            rabbitmq={"url": "amqp://guest:guest@localhost:5672/"},
+            database={"url": "mysql://cinder:secret@db/cinder"},
+            cinder={
+                "project_id": "project-id",
+                "user_id": "user-id",
+                "cluster": None,
+                "cluster_ok": True,
+                "default_volume_type": None,
+                "image_volume_cache_enabled": False,
+                "image_volume_cache_max_size_gb": 0,
+                "image_volume_cache_max_count": 0,
+            },
+            ca={"bundle": None},
+            cinder_backends={"enabled_backends": "ceph", "cluster_ok": True},
+        )
+
+        assert "glance_ca_certificates_file =" not in rendered
+        assert "glance_api_insecure = false" not in rendered
+        assert "\n[nova]\n" not in rendered
+        assert "\n[barbican]\n" not in rendered
+        assert "\n[glance]\n" not in rendered
 
     def test_cinder_conf_renders_cluster_when_supported_and_set(self):
         """Cluster should be rendered when all enabled backends support it."""
