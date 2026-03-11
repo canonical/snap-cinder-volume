@@ -56,6 +56,7 @@ parts:
       - sysfsutils
       - python3-rtslib-fb
       - python3-minimal
+      - python3-pkg-resources
       - python3-tz
       - ceph-common
       - nfs-common
