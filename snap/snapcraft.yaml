@@ -1,27 +1,23 @@
 name: cinder-volume
-base: core24
-version: "2025.1"
+base: core26
+build-base: devel
+version: "2026.1"
 summary: cinder-volume in a snap
 description: |
   This snap is a base snap for cinder-volume. It intended to be used
   directly for supported plugins, but can be used a base for other snaps
   that need to include cinder-volume.
 
-grade: stable
+grade: devel
 confinement: strict
 
 assumes:
 - snapd2.73
 
-package-repositories:
-  - type: apt
-    cloud: epoxy
-    priority: always
-
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
-  PYTHONPATH: $SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages
+  PYTHONPATH: $SNAP/lib/python3.14/site-packages:$SNAP/usr/lib/python3/dist-packages
 
 layout:
   /usr/bin/findmnt:
@@ -35,7 +31,7 @@ apps:
   cinder-volume:
     environment:
       # Standard library components must have priority in module name resolution: https://storyboard.openstack.org/#!/story/2007806
-      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.12:$SNAP/lib/python3.12/site-packages
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.14:$SNAP/lib/python3.14/site-packages
       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/ceph
     command: bin/cinder_volume
     daemon: simple
