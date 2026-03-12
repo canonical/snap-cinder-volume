@@ -152,7 +152,7 @@ class HitachiConfiguration(BaseBackendConfiguration):
 
     # Mandatory connection parameters
     san_ip: pydantic.IPvAnyAddress
-    san_username: str
+    san_login: str
     san_password: str
     hitachi_storage_id: str | int
     hitachi_pools: str  # comma‑separated list
