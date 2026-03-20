@@ -49,6 +49,7 @@ class CinderConfiguration(ParentConfig):
 
     project_id: str
     user_id: str
+    region_name: str | None = None
     image_volume_cache_enabled: bool = False
     image_volume_cache_max_size_gb: int = 0
     image_volume_cache_max_count: int = 0
