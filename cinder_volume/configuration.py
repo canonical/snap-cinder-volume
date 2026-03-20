@@ -9,6 +9,7 @@ takes as input from `snap set`.
 
 import base64
 import binascii
+import typing
 
 import pydantic
 import pydantic.alias_generators
@@ -48,6 +49,7 @@ class CinderConfiguration(ParentConfig):
 
     project_id: str
     user_id: str
+    region_name: str | None = None
     image_volume_cache_enabled: bool = False
     image_volume_cache_max_size_gb: int = 0
     image_volume_cache_max_count: int = 0
@@ -198,10 +200,58 @@ class DellSCConfiguration(BaseBackendConfiguration):
     )
 
     # Core required fields
-    san_ip: pydantic.IPvAnyAddress  # Dell Storage Center management IP/FQDN
-    san_login: str  # SAN management username
-    san_password: str  # SAN management password
-    dell_sc_ssn: int = Field(default=64702)  # Storage Center System Serial Number
+    san_ip: pydantic.IPvAnyAddress  # Dell DSM management IP/FQDN
+    san_login: str  # DSM management username
+    san_password: str  # DSM management password
+    dell_sc_ssn: int  # Storage Center System Serial Number
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+    enable_unsupported_driver: typing.Literal[True]
+
+    # Optional secondary DSM settings
+    secondary_san_ip: pydantic.IPvAnyAddress | None = None
+    secondary_san_login: str | None = None
+    secondary_san_password: str | None = None
+
+
+class DellpowerstoreConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell PowerStore** Cinder driver.
+
+    This configuration supports iSCSI, Fibre Channel and NVMe-TCP protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # Dell PowerStore management IP/FQDN
+    san_login: str  # Dell PowerStore management username
+    san_password: str  # Dell PowerStore management password
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+
+
+class HPEthreeparConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **HPE Three Par Storage** Cinder driver.
+
+    This configuration supports iSCSI and Fibre Channel protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # HPE 3Par san controller IP
+    san_login: str  # HPE 3Par san controller username
+    san_password: str  # HPE 3Par san controller password
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
@@ -216,6 +266,8 @@ class Configuration(BaseConfiguration):
     hitachi: dict[str, HitachiConfiguration] = {}
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
+    dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
+    hpethreepar: dict[str, HPEthreeparConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -229,6 +281,7 @@ class Configuration(BaseConfiguration):
             ("hitachi", self.hitachi),
             ("pure", self.pure),
             ("dellsc", self.dellsc),
+            ("hpe3par", self.hpethreepar),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types
