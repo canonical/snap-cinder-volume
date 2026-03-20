@@ -56,6 +56,7 @@ See "Configuration Reference" for full details.
 
 * `cinder.project-id` Project ID for Cinder service
 * `cinder.user-id` User ID for Cinder service
+* `cinder.region-name` (optional) Region name to use for peer OpenStack service lookups
 * `cinder.image-volume-cache-enabled` (false) Enable image volume cache
 * `cinder.image-volume-cache-max-size-gb` (0) Max size of image volume cache in GB
 * `cinder.image-volume-cache-max-count` (0) Max number of images in cache

@@ -92,6 +92,7 @@ class TestCinderConfiguration:
             **{
                 "project-id": "test-project",
                 "user-id": "test-user",
+                "region-name": "RegionOne",
                 "image-volume-cache-enabled": True,
                 "image-volume-cache-max-size-gb": 100,
                 "image-volume-cache-max-count": 10,
@@ -99,6 +100,7 @@ class TestCinderConfiguration:
         )
         assert config.project_id == "test-project"
         assert config.user_id == "test-user"
+        assert config.region_name == "RegionOne"
         assert config.image_volume_cache_enabled is True
         assert config.image_volume_cache_max_size_gb == 100
         assert config.image_volume_cache_max_count == 10
@@ -109,6 +111,7 @@ class TestCinderConfiguration:
             **{
                 "project-id": "test-project",
                 "user-id": "test-user",
+                "region-name": "RegionOne",
                 "image-volume-cache-enabled": True,
                 "image-volume-cache-max-size-gb": 100,
                 "image-volume-cache-max-count": 10,
@@ -116,6 +119,7 @@ class TestCinderConfiguration:
         )
         assert config.project_id == "test-project"
         assert config.user_id == "test-user"
+        assert config.region_name == "RegionOne"
 
 
 class TestDellSCConfiguration:
