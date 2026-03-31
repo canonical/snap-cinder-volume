@@ -321,3 +321,40 @@ sudo snap set cinder-volume \
   hpe3par.backend1.protocol=fc \
   hpe3par.backend1.replication-device='backend_id:backend1,replication_mode:sync,quorum_withness_ip:10.20.30.60,san_ip:10.20.30.50,san_login:admin,san_password:password,hpe3par_api_url:http://10.20.30.50/api/v1,hpe3par_username=admin,hpe3par_password=password'
 ```
+
+### Infinidat InfiniBox (backend)
+
+Configure one or more Infinidat InfiniBox backends using the `infinidat.<backend-name>.*` namespace:
+
+**Required options:**
+* `infinidat.<backend-name>.volume-backend-name`  Unique name for this backend
+* `infinidat.<backend-name>.san-ip`               InfiniBox management IP or hostname
+* `infinidat.<backend-name>.san-login`            InfiniBox username
+* `infinidat.<backend-name>.san-password`         InfiniBox password
+* `infinidat.<backend-name>.infinidat-pool-name`  Pool name on InfiniBox for volume creation
+
+**Protocol configuration:**
+* `infinidat.<backend-name>.protocol`                     Protocol (`iscsi` or `fc`) – default `iscsi`
+* `infinidat.<backend-name>.infinidat-iscsi-netspaces`    Comma-separated list of iSCSI network spaces (required when protocol is `iscsi`)
+
+**CHAP authentication:**
+* `infinidat.<backend-name>.use-chap-auth`       (true) Enable CHAP authentication for iSCSI
+* `infinidat.<backend-name>.chap-username`       CHAP username
+* `infinidat.<backend-name>.chap-password`       CHAP password
+
+**Storage tuning:**
+* `infinidat.<backend-name>.infinidat-use-compression`       Enable InfiniBox volume compression
+* `infinidat.<backend-name>.max-over-subscription-ratio`     Maximum oversubscription ratio for thin provisioning
+
+**Example:**
+```bash
+sudo snap set cinder-volume \
+  infinidat.infinibox1.volume-backend-name=infinibox1 \
+  infinidat.infinibox1.san-ip=10.0.0.100 \
+  infinidat.infinibox1.san-login=admin \
+  infinidat.infinibox1.san-password=secret \
+  infinidat.infinibox1.infinidat-pool-name=cinder-pool \
+  infinidat.infinibox1.protocol=iscsi \
+  infinidat.infinibox1.infinidat-iscsi-netspaces=default_iscsi_space \
+  infinidat.infinibox1.use-chap-auth=true
+```
