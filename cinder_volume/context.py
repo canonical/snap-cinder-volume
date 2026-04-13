@@ -439,3 +439,29 @@ class HPEthreeparBackendContext(BaseBackendContext):
             }
         )
         return context
+
+
+class InfinidatBackendContext(BaseBackendContext):
+    """Render an Infinidat InfiniBox backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True
+
+    def context(self) -> dict:
+        """Return context for Infinidat backend."""
+        context = dict(super().context())
+
+        # Infinidat uses a single driver class for both iSCSI and FC;
+        # the protocol is controlled by configuration options.
+        context.update(
+            {
+                "volume_driver": (
+                    "cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
+                ),
+            }
+        )
+        return context
