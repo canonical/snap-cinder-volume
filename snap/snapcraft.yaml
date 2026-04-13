@@ -13,6 +13,11 @@ confinement: strict
 assumes:
 - snapd2.73
 
+platforms:
+  amd64:
+  arm64:
+  s390x:
+
 package-repositories:
   - type: apt
     cloud: epoxy
