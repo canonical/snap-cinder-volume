@@ -13,6 +13,11 @@ confinement: strict
 assumes:
 - snapd2.73
 
+platforms:
+  amd64:
+  arm64:
+  s390x:
+
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
