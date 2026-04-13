@@ -413,7 +413,7 @@ class DellpowerstoreBackendContext(BaseBackendContext):
         return context
 
 
-class HPEthreeparBackendContext(BaseBackendContext):
+class HpethreeparBackendContext(BaseBackendContext):
     """Render a HPE 3Par backend stanza."""
 
     _hidden_keys = ("protocol",)

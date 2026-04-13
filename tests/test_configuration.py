@@ -172,12 +172,12 @@ class TestDellSCConfiguration:
         assert config.dell_sc_ssn == 64702
 
 
-class TestHPEthreeparConfiguration:
-    """Test the HPEthreeparConfiguration class."""
+class TestHpethreeparConfiguration:
+    """Test the HpethreeparConfiguration class."""
 
     def test_hpe3par_accepts_valid_configuration(self):
         """Test valid HPE3Par backend configuration."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -196,7 +196,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_requires_san_ip(self):
         """Test san-ip is required for HPE3Par backends."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "volume-backend-name": "hpe3par01",
                     "san-login": "admin",
@@ -207,7 +207,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_requires_san_login(self):
         """Test san-login is required for HPE3Par backends."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "volume-backend-name": "hpe3par01",
                     "san-ip": "10.0.0.10",
@@ -218,7 +218,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_requires_san_password(self):
         """Test san-password is required for HPE3Par backends."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "volume-backend-name": "hpe3par01",
                     "san-ip": "10.0.0.10",
@@ -229,7 +229,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_requires_volume_backend_name(self):
         """Test volume-backend-name is required for HPE3Par backends."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "san-ip": "10.0.0.10",
                     "san-login": "admin",
@@ -240,7 +240,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_rejects_invalid_san_ip(self):
         """Test that an invalid IP address is rejected."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "volume-backend-name": "hpe3par01",
                     "san-ip": "not-an-ip",
@@ -252,7 +252,7 @@ class TestHPEthreeparConfiguration:
     def test_hpe3par_rejects_invalid_protocol(self):
         """Test that an invalid protocol value is rejected."""
         with pytest.raises(pydantic.ValidationError):
-            configuration.HPEthreeparConfiguration(
+            configuration.HpethreeparConfiguration(
                 **{
                     "volume-backend-name": "hpe3par01",
                     "san-ip": "10.0.0.10",
@@ -265,7 +265,7 @@ class TestHPEthreeparConfiguration:
     @pytest.mark.parametrize("protocol", ["fc", "iscsi"])
     def test_hpe3par_accepts_valid_protocols(self, protocol):
         """Test that fc and iscsi protocols are accepted."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -278,7 +278,7 @@ class TestHPEthreeparConfiguration:
 
     def test_hpe3par_protocol_defaults_to_fc(self):
         """Test that protocol defaults to fc when not specified."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -307,7 +307,7 @@ class TestHPEthreeparConfiguration:
     )
     def test_hpe3par_extra_field_validation_alias(self, kebab_key, snake_attr):
         """Test that extra fields in kebab-case are validated into snake_case."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -332,7 +332,7 @@ class TestHPEthreeparConfiguration:
     )
     def test_hpe3par_extra_field_serialization_alias(self, kebab_key, snake_key):
         """Test that extra fields are serialized to snake_case with model_dump."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -347,7 +347,7 @@ class TestHPEthreeparConfiguration:
 
     def test_hpe3par_defined_fields_serialized_to_snake_case(self):
         """Test that defined fields are serialized to snake_case."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -369,7 +369,7 @@ class TestHPEthreeparConfiguration:
 
     def test_hpe3par_full_config_serialization(self):
         """Test serialization of a full HPE3Par config with mixed fields."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
@@ -396,7 +396,7 @@ class TestHPEthreeparConfiguration:
 
     def test_hpe3par_multiple_extra_fields(self):
         """Test that multiple extra fields are all converted correctly."""
-        config = configuration.HPEthreeparConfiguration(
+        config = configuration.HpethreeparConfiguration(
             **{
                 "volume-backend-name": "hpe3par01",
                 "san-ip": "10.0.0.10",
