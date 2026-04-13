@@ -234,7 +234,7 @@ class DellpowerstoreConfiguration(BaseBackendConfiguration):
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
-class HPEthreeparConfiguration(BaseBackendConfiguration):
+class HpethreeparConfiguration(BaseBackendConfiguration):
     """All options recognised by the **HPE Three Par Storage** Cinder driver.
 
     This configuration supports iSCSI and Fibre Channel protocols.
@@ -267,7 +267,7 @@ class Configuration(BaseConfiguration):
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
-    hpethreepar: dict[str, HPEthreeparConfiguration] = {}
+    hpethreepar: dict[str, HpethreeparConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -281,7 +281,7 @@ class Configuration(BaseConfiguration):
             ("hitachi", self.hitachi),
             ("pure", self.pure),
             ("dellsc", self.dellsc),
-            ("hpe3par", self.hpethreepar),
+            ("hpethreepar", self.hpethreepar),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types
