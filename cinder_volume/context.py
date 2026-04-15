@@ -319,8 +319,13 @@ class FujitsueternusdxBackendContext(BaseBackendContext):
         protocol = self.backend_config.get("protocol", "fc").lower()
 
         driver_classes = {
-            "fc": "# TODO: cinder.volume.drivers.<module>.<FCClassName>",
-            "iscsi": "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>",
+            "fc": (
+                "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver"
+            ),
+            "iscsi": (
+                "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi"
+                ".FJDXISCSIDriver"
+            ),
         }
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
@@ -364,7 +369,9 @@ class IbmflashsystemcommonBackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for Ibmflashsystemcommon backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = (
+            "cinder.volume.drivers.ibm.flashsystem_common.FlashSystemDriver"
+        )
         return context
 
 
@@ -379,7 +386,9 @@ class IbmflashsystemiscsiBackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for FlashSystem iSCSI backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = (
+            "cinder.volume.drivers.ibm.flashsystem_iscsi.FlashSystemISCSIDriver"
+        )
         return context
 
 
@@ -474,7 +483,9 @@ class Inspuras13000BackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for AS13000 backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = (
+            "cinder.volume.drivers.inspur.as13000.as13000_driver.AS13000Driver"
+        )
         return context
 
 
@@ -494,8 +505,14 @@ class InspurinstorageBackendContext(BaseBackendContext):
         protocol = self.backend_config.get("protocol", "fc").lower()
 
         driver_classes = {
-            "fc": "# TODO: cinder.volume.drivers.<module>.<FCClassName>",
-            "iscsi": "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>",
+            "fc": (
+                "cinder.volume.drivers.inspur.instorage.instorage_fc"
+                ".InStorageMCSFCDriver"
+            ),
+            "iscsi": (
+                "cinder.volume.drivers.inspur.instorage.instorage_iscsi"
+                ".InStorageMCSISCSIDriver"
+            ),
         }
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
@@ -576,8 +593,8 @@ class NecvBackendContext(BaseBackendContext):
         protocol = self.backend_config.get("protocol", "fc").lower()
 
         driver_classes = {
-            "fc": "# TODO: cinder.volume.drivers.<module>.<FCClassName>",
-            "iscsi": "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>",
+            "fc": "cinder.volume.drivers.nec.v.nec_v_fc.VStorageFCDriver",
+            "iscsi": "cinder.volume.drivers.nec.v.nec_v_iscsi.VStorageISCSIDriver",
         }
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
@@ -669,7 +686,9 @@ class OpeneBackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for Jovian iSCSI backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = (
+            "cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver"
+        )
         return context
 
 
@@ -741,7 +760,7 @@ class StxBackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for Stx backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = "cinder.volume.drivers.stx.iscsi.STXISCSIDriver"
         return context
 
 
@@ -778,8 +797,10 @@ class Toyouacs5000BackendContext(BaseBackendContext):
         protocol = self.backend_config.get("protocol", "fc").lower()
 
         driver_classes = {
-            "fc": "# TODO: cinder.volume.drivers.<module>.<FCClassName>",
-            "iscsi": "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>",
+            "fc": ("cinder.volume.drivers.toyou.acs5000.acs5000_fc.Acs5000FCDriver"),
+            "iscsi": (
+                "cinder.volume.drivers.toyou.acs5000.acs5000_iscsi.Acs5000ISCSIDriver"
+            ),
         }
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
@@ -798,7 +819,9 @@ class VeritasaccessBackendContext(BaseBackendContext):
     def context(self) -> dict:
         """Return context for ACCESSIscsi backend."""
         context = dict(super().context())
-        context["volume_driver"] = "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        context["volume_driver"] = (
+            "cinder.volume.drivers.veritas_access.veritas_iscsi.ACCESSIscsiDriver"
+        )
         return context
 
 

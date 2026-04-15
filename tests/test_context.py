@@ -268,9 +268,8 @@ class TestFujitsueternusdxBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "fc"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<FCClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver"
         )
 
     def test_fujitsueternusdx_volume_driver_iscsi(self):
@@ -279,9 +278,8 @@ class TestFujitsueternusdxBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "iscsi"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.FJDXISCSIDriver"
         )
 
     def test_fujitsueternusdx_hidden_keys_excluded(self):
@@ -350,9 +348,8 @@ class TestIbmflashsystemcommonBackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.ibm.flashsystem_common.FlashSystemDriver"
         )
 
 
@@ -372,9 +369,8 @@ class TestIbmflashsystemiscsiBackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.ibm.flashsystem_iscsi.FlashSystemISCSIDriver"
         )
 
 
@@ -498,9 +494,8 @@ class TestInspuras13000BackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.inspur.as13000.as13000_driver.AS13000Driver"
         )
 
 
@@ -520,9 +515,8 @@ class TestInspurinstorageBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "fc"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<FCClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.inspur.instorage.instorage_fc.InStorageMCSFCDriver"
         )
 
     def test_inspurinstorage_volume_driver_iscsi(self):
@@ -531,9 +525,9 @@ class TestInspurinstorageBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "iscsi"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.inspur.instorage.instorage_iscsi"
+            ".InStorageMCSISCSIDriver"
         )
 
     def test_inspurinstorage_hidden_keys_excluded(self):
@@ -646,9 +640,8 @@ class TestNecvBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "fc"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<FCClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.nec.v.nec_v_fc.VStorageFCDriver"
         )
 
     def test_necv_volume_driver_iscsi(self):
@@ -657,9 +650,8 @@ class TestNecvBackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "iscsi"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.nec.v.nec_v_iscsi.VStorageISCSIDriver"
         )
 
     def test_necv_hidden_keys_excluded(self):
@@ -790,9 +782,8 @@ class TestOpeneBackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver"
         )
 
 
@@ -894,9 +885,8 @@ class TestStxBackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.stx.iscsi.STXISCSIDriver"
         )
 
 
@@ -938,9 +928,8 @@ class TestToyouacs5000BackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "fc"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<FCClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.toyou.acs5000.acs5000_fc.Acs5000FCDriver"
         )
 
     def test_toyouacs5000_volume_driver_iscsi(self):
@@ -949,9 +938,8 @@ class TestToyouacs5000BackendContext:
             "mybackend", {"volume_backend_name": "mybackend", "protocol": "iscsi"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ISCSIClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.toyou.acs5000.acs5000_iscsi.Acs5000ISCSIDriver"
         )
 
     def test_toyouacs5000_hidden_keys_excluded(self):
@@ -979,9 +967,8 @@ class TestVeritasaccessBackendContext:
             "mybackend", {"volume_backend_name": "mybackend"}
         )
         result = ctx.context()
-        assert (
-            result["volume_driver"]
-            == "# TODO: cinder.volume.drivers.<module>.<ClassName>"
+        assert result["volume_driver"] == (
+            "cinder.volume.drivers.veritas_access.veritas_iscsi.ACCESSIscsiDriver"
         )
 
 

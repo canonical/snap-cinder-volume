@@ -1812,20 +1812,20 @@ class TestOpeneConfiguration:
     def test_opene_accepts_valid_configuration(self):
         """Test valid opene backend configuration."""
         config = configuration.OpeneConfiguration(
-            **{"volume-backend-name": "opene01", "chap-password-len": "secret"}
+            **{"volume-backend-name": "opene01", "chap-password-len": 12}
         )
         assert config.volume_backend_name == "opene01"
 
     def test_opene_requires_chap_password_len(self):
         """Test chap-password-len is required."""
-        kwargs = {"volume-backend-name": "opene01", "chap-password-len": "secret"}
+        kwargs = {"volume-backend-name": "opene01", "chap-password-len": 12}
         del kwargs["chap-password-len"]
         with pytest.raises(pydantic.ValidationError):
             configuration.OpeneConfiguration(**kwargs)
 
     def test_opene_allows_extra_fields(self):
         """Test that extra driver-specific fields are accepted."""
-        kwargs = {"volume-backend-name": "opene01", "chap-password-len": "secret"}
+        kwargs = {"volume-backend-name": "opene01", "chap-password-len": 12}
         kwargs["some-vendor-specific-opt"] = "value"
         config = configuration.OpeneConfiguration(**kwargs)
         assert config.some_vendor_specific_opt == "value"

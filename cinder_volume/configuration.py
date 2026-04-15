@@ -647,7 +647,7 @@ class OpeneConfiguration(BaseBackendConfiguration):
     )
 
     # Core required fields
-    chap_password_len: str  # Length of the random string for CHAP password.
+    chap_password_len: int  # Length of the random string for CHAP password.
 
 
 class ProphetstorConfiguration(BaseBackendConfiguration):
