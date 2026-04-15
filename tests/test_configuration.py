@@ -414,3 +414,1788 @@ class TestHpethreeparConfiguration:
         assert config.protocol == "iscsi"
         assert config.hpe3par_iscsi_ips == "10.0.0.11,10.0.0.12"
         assert config.hpe3par_iscsi_chap_enabled == "true"
+
+
+class TestSolidfireConfiguration:
+    """Test the SolidfireConfiguration class."""
+
+    def test_solidfire_accepts_valid_configuration(self):
+        """Test valid solidfire backend configuration."""
+        config = configuration.SolidfireConfiguration(
+            **{
+                "volume-backend-name": "solidfire01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_solidfire_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "solidfire01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SolidfireConfiguration(**kwargs)
+
+    def test_solidfire_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "solidfire01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SolidfireConfiguration(**kwargs)
+
+    def test_solidfire_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "solidfire01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SolidfireConfiguration(**kwargs)
+
+    def test_solidfire_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "solidfire01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SolidfireConfiguration(**kwargs)
+
+    def test_solidfire_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "solidfire01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.SolidfireConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestDatacoreConfiguration:
+    """Test the DatacoreConfiguration class."""
+
+    def test_datacore_accepts_valid_configuration(self):
+        """Test valid datacore backend configuration."""
+        config = configuration.DatacoreConfiguration(
+            **{"volume-backend-name": "datacore01"}
+        )
+        assert config.volume_backend_name == "datacore01"
+
+    def test_datacore_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "datacore01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.DatacoreConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestDateraConfiguration:
+    """Test the DateraConfiguration class."""
+
+    def test_datera_accepts_valid_configuration(self):
+        """Test valid datera backend configuration."""
+        config = configuration.DateraConfiguration(
+            **{
+                "volume-backend-name": "datera01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_datera_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "datera01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DateraConfiguration(**kwargs)
+
+    def test_datera_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "datera01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DateraConfiguration(**kwargs)
+
+    def test_datera_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "datera01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DateraConfiguration(**kwargs)
+
+    def test_datera_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "datera01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DateraConfiguration(**kwargs)
+
+    def test_datera_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "datera01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.DateraConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestDellpowermaxConfiguration:
+    """Test the DellpowermaxConfiguration class."""
+
+    def test_dellpowermax_accepts_valid_configuration(self):
+        """Test valid dellpowermax backend configuration."""
+        config = configuration.DellpowermaxConfiguration(
+            **{
+                "volume-backend-name": "dellpowermax01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "fc",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_dellpowermax_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowermaxConfiguration(**kwargs)
+
+    def test_dellpowermax_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowermaxConfiguration(**kwargs)
+
+    def test_dellpowermax_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowermaxConfiguration(**kwargs)
+
+    def test_dellpowermax_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowermaxConfiguration(**kwargs)
+
+    def test_dellpowermax_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowermaxConfiguration(**kwargs)
+
+    def test_dellpowermax_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "dellpowermax01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.DellpowermaxConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestDellpowervaultConfiguration:
+    """Test the DellpowervaultConfiguration class."""
+
+    def test_dellpowervault_accepts_valid_configuration(self):
+        """Test valid dellpowervault backend configuration."""
+        config = configuration.DellpowervaultConfiguration(
+            **{"volume-backend-name": "dellpowervault01", "protocol": "fc"}
+        )
+        assert config.volume_backend_name == "dellpowervault01"
+
+    def test_dellpowervault_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {"volume-backend-name": "dellpowervault01", "protocol": "fc"}
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellpowervaultConfiguration(**kwargs)
+
+    def test_dellpowervault_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "dellpowervault01", "protocol": "fc"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.DellpowervaultConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestDellxtremioConfiguration:
+    """Test the DellxtremioConfiguration class."""
+
+    def test_dellxtremio_accepts_valid_configuration(self):
+        """Test valid dellxtremio backend configuration."""
+        config = configuration.DellxtremioConfiguration(
+            **{
+                "volume-backend-name": "dellxtremio01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "iscsi",
+                "enable-unsupported-driver": True,
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_dellxtremio_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellxtremioConfiguration(**kwargs)
+
+    def test_dellxtremio_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellxtremioConfiguration(**kwargs)
+
+    def test_dellxtremio_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellxtremioConfiguration(**kwargs)
+
+    def test_dellxtremio_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellxtremioConfiguration(**kwargs)
+
+    def test_dellxtremio_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.DellxtremioConfiguration(**kwargs)
+
+    def test_dellxtremio_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "dellxtremio01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.DellxtremioConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestFujitsueternusdxConfiguration:
+    """Test the FujitsueternusdxConfiguration class."""
+
+    def test_fujitsueternusdx_accepts_valid_configuration(self):
+        """Test valid fujitsueternusdx backend configuration."""
+        config = configuration.FujitsueternusdxConfiguration(
+            **{
+                "volume-backend-name": "fujitsueternusdx01",
+                "fujitsu-passwordless": "secret",
+                "protocol": "fc",
+            }
+        )
+        assert config.volume_backend_name == "fujitsueternusdx01"
+
+    def test_fujitsueternusdx_requires_fujitsu_passwordless(self):
+        """Test fujitsu-passwordless is required."""
+        kwargs = {
+            "volume-backend-name": "fujitsueternusdx01",
+            "fujitsu-passwordless": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["fujitsu-passwordless"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.FujitsueternusdxConfiguration(**kwargs)
+
+    def test_fujitsueternusdx_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "fujitsueternusdx01",
+            "fujitsu-passwordless": "secret",
+            "protocol": "fc",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.FujitsueternusdxConfiguration(**kwargs)
+
+    def test_fujitsueternusdx_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "fujitsueternusdx01",
+            "fujitsu-passwordless": "secret",
+            "protocol": "fc",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.FujitsueternusdxConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestHpexpConfiguration:
+    """Test the HpexpConfiguration class."""
+
+    def test_hpexp_accepts_valid_configuration(self):
+        """Test valid hpexp backend configuration."""
+        config = configuration.HpexpConfiguration(
+            **{"volume-backend-name": "hpexp01", "protocol": "fc"}
+        )
+        assert config.volume_backend_name == "hpexp01"
+
+    def test_hpexp_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {"volume-backend-name": "hpexp01", "protocol": "fc"}
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.HpexpConfiguration(**kwargs)
+
+    def test_hpexp_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "hpexp01", "protocol": "fc"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.HpexpConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestIbmflashsystemcommonConfiguration:
+    """Test the IbmflashsystemcommonConfiguration class."""
+
+    def test_ibmflashsystemcommon_accepts_valid_configuration(self):
+        """Test valid ibmflashsystemcommon backend configuration."""
+        config = configuration.IbmflashsystemcommonConfiguration(
+            **{
+                "volume-backend-name": "ibmflashsystemcommon01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "enable-unsupported-driver": True,
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_ibmflashsystemcommon_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "ibmflashsystemcommon01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmflashsystemcommonConfiguration(**kwargs)
+
+    def test_ibmflashsystemcommon_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "ibmflashsystemcommon01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmflashsystemcommonConfiguration(**kwargs)
+
+    def test_ibmflashsystemcommon_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "ibmflashsystemcommon01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmflashsystemcommonConfiguration(**kwargs)
+
+    def test_ibmflashsystemcommon_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "ibmflashsystemcommon01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmflashsystemcommonConfiguration(**kwargs)
+
+    def test_ibmflashsystemcommon_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "ibmflashsystemcommon01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.IbmflashsystemcommonConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestIbmflashsystemiscsiConfiguration:
+    """Test the IbmflashsystemiscsiConfiguration class."""
+
+    def test_ibmflashsystemiscsi_accepts_valid_configuration(self):
+        """Test valid ibmflashsystemiscsi backend configuration."""
+        config = configuration.IbmflashsystemiscsiConfiguration(
+            **{"volume-backend-name": "ibmflashsystemiscsi01"}
+        )
+        assert config.volume_backend_name == "ibmflashsystemiscsi01"
+
+    def test_ibmflashsystemiscsi_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "ibmflashsystemiscsi01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.IbmflashsystemiscsiConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestIbmgpfsConfiguration:
+    """Test the IbmgpfsConfiguration class."""
+
+    def test_ibmgpfs_accepts_valid_configuration(self):
+        """Test valid ibmgpfs backend configuration."""
+        config = configuration.IbmgpfsConfiguration(
+            **{
+                "volume-backend-name": "ibmgpfs01",
+                "gpfs-user-password": "secret",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_ibmgpfs_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmgpfsConfiguration(**kwargs)
+
+    def test_ibmgpfs_requires_gpfs_user_password(self):
+        """Test gpfs-user-password is required."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["gpfs-user-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmgpfsConfiguration(**kwargs)
+
+    def test_ibmgpfs_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmgpfsConfiguration(**kwargs)
+
+    def test_ibmgpfs_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmgpfsConfiguration(**kwargs)
+
+    def test_ibmgpfs_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmgpfsConfiguration(**kwargs)
+
+    def test_ibmgpfs_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "ibmgpfs01",
+            "gpfs-user-password": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.IbmgpfsConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestIbmibmstorageConfiguration:
+    """Test the IbmibmstorageConfiguration class."""
+
+    def test_ibmibmstorage_accepts_valid_configuration(self):
+        """Test valid ibmibmstorage backend configuration."""
+        config = configuration.IbmibmstorageConfiguration(
+            **{
+                "volume-backend-name": "ibmibmstorage01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_ibmibmstorage_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "ibmibmstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmibmstorageConfiguration(**kwargs)
+
+    def test_ibmibmstorage_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "ibmibmstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmibmstorageConfiguration(**kwargs)
+
+    def test_ibmibmstorage_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "ibmibmstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmibmstorageConfiguration(**kwargs)
+
+    def test_ibmibmstorage_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "ibmibmstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmibmstorageConfiguration(**kwargs)
+
+    def test_ibmibmstorage_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "ibmibmstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.IbmibmstorageConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestIbmstorwizesvcConfiguration:
+    """Test the IbmstorwizesvcConfiguration class."""
+
+    def test_ibmstorwizesvc_accepts_valid_configuration(self):
+        """Test valid ibmstorwizesvc backend configuration."""
+        config = configuration.IbmstorwizesvcConfiguration(
+            **{
+                "volume-backend-name": "ibmstorwizesvc01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "fc",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_ibmstorwizesvc_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmstorwizesvcConfiguration(**kwargs)
+
+    def test_ibmstorwizesvc_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmstorwizesvcConfiguration(**kwargs)
+
+    def test_ibmstorwizesvc_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmstorwizesvcConfiguration(**kwargs)
+
+    def test_ibmstorwizesvc_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmstorwizesvcConfiguration(**kwargs)
+
+    def test_ibmstorwizesvc_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IbmstorwizesvcConfiguration(**kwargs)
+
+    def test_ibmstorwizesvc_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "ibmstorwizesvc01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.IbmstorwizesvcConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestInfinidatConfiguration:
+    """Test the InfinidatConfiguration class."""
+
+    def test_infinidat_accepts_valid_configuration(self):
+        """Test valid infinidat backend configuration."""
+        config = configuration.InfinidatConfiguration(
+            **{
+                "volume-backend-name": "infinidat01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_infinidat_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "infinidat01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(**kwargs)
+
+    def test_infinidat_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "infinidat01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(**kwargs)
+
+    def test_infinidat_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "infinidat01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(**kwargs)
+
+    def test_infinidat_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "infinidat01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(**kwargs)
+
+    def test_infinidat_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "infinidat01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.InfinidatConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestInspuras13000Configuration:
+    """Test the Inspuras13000Configuration class."""
+
+    def test_inspuras13000_accepts_valid_configuration(self):
+        """Test valid inspuras13000 backend configuration."""
+        config = configuration.Inspuras13000Configuration(
+            **{
+                "volume-backend-name": "inspuras1300001",
+                "as-13000-token-available-time": "secret",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_inspuras13000_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Inspuras13000Configuration(**kwargs)
+
+    def test_inspuras13000_requires_as13000_token_available_time(self):
+        """Test as13000-token-available-time is required."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["as-13000-token-available-time"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Inspuras13000Configuration(**kwargs)
+
+    def test_inspuras13000_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Inspuras13000Configuration(**kwargs)
+
+    def test_inspuras13000_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Inspuras13000Configuration(**kwargs)
+
+    def test_inspuras13000_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Inspuras13000Configuration(**kwargs)
+
+    def test_inspuras13000_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "inspuras1300001",
+            "as-13000-token-available-time": "secret",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.Inspuras13000Configuration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestInspurinstorageConfiguration:
+    """Test the InspurinstorageConfiguration class."""
+
+    def test_inspurinstorage_accepts_valid_configuration(self):
+        """Test valid inspurinstorage backend configuration."""
+        config = configuration.InspurinstorageConfiguration(
+            **{
+                "volume-backend-name": "inspurinstorage01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "fc",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_inspurinstorage_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InspurinstorageConfiguration(**kwargs)
+
+    def test_inspurinstorage_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InspurinstorageConfiguration(**kwargs)
+
+    def test_inspurinstorage_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InspurinstorageConfiguration(**kwargs)
+
+    def test_inspurinstorage_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InspurinstorageConfiguration(**kwargs)
+
+    def test_inspurinstorage_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InspurinstorageConfiguration(**kwargs)
+
+    def test_inspurinstorage_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "inspurinstorage01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.InspurinstorageConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestKaminarioConfiguration:
+    """Test the KaminarioConfiguration class."""
+
+    def test_kaminario_accepts_valid_configuration(self):
+        """Test valid kaminario backend configuration."""
+        config = configuration.KaminarioConfiguration(
+            **{"volume-backend-name": "kaminario01"}
+        )
+        assert config.volume_backend_name == "kaminario01"
+
+    def test_kaminario_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "kaminario01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.KaminarioConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestLinstorConfiguration:
+    """Test the LinstorConfiguration class."""
+
+    def test_linstor_accepts_valid_configuration(self):
+        """Test valid linstor backend configuration."""
+        config = configuration.LinstorConfiguration(
+            **{"volume-backend-name": "linstor01"}
+        )
+        assert config.volume_backend_name == "linstor01"
+
+    def test_linstor_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "linstor01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.LinstorConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestMacrosanConfiguration:
+    """Test the MacrosanConfiguration class."""
+
+    def test_macrosan_accepts_valid_configuration(self):
+        """Test valid macrosan backend configuration."""
+        config = configuration.MacrosanConfiguration(
+            **{
+                "volume-backend-name": "macrosan01",
+                "macrosan-sdas-password": "secret",
+                "macrosan-replication-password": "secret",
+                "protocol": "iscsi",
+            }
+        )
+        assert config.volume_backend_name == "macrosan01"
+
+    def test_macrosan_requires_macrosan_sdas_password(self):
+        """Test macrosan-sdas-password is required."""
+        kwargs = {
+            "volume-backend-name": "macrosan01",
+            "macrosan-sdas-password": "secret",
+            "macrosan-replication-password": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["macrosan-sdas-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.MacrosanConfiguration(**kwargs)
+
+    def test_macrosan_requires_macrosan_replication_password(self):
+        """Test macrosan-replication-password is required."""
+        kwargs = {
+            "volume-backend-name": "macrosan01",
+            "macrosan-sdas-password": "secret",
+            "macrosan-replication-password": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["macrosan-replication-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.MacrosanConfiguration(**kwargs)
+
+    def test_macrosan_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "macrosan01",
+            "macrosan-sdas-password": "secret",
+            "macrosan-replication-password": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.MacrosanConfiguration(**kwargs)
+
+    def test_macrosan_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "macrosan01",
+            "macrosan-sdas-password": "secret",
+            "macrosan-replication-password": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.MacrosanConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestNecvConfiguration:
+    """Test the NecvConfiguration class."""
+
+    def test_necv_accepts_valid_configuration(self):
+        """Test valid necv backend configuration."""
+        config = configuration.NecvConfiguration(
+            **{"volume-backend-name": "necv01", "protocol": "fc"}
+        )
+        assert config.volume_backend_name == "necv01"
+
+    def test_necv_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {"volume-backend-name": "necv01", "protocol": "fc"}
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NecvConfiguration(**kwargs)
+
+    def test_necv_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "necv01", "protocol": "fc"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.NecvConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestNetappConfiguration:
+    """Test the NetappConfiguration class."""
+
+    def test_netapp_accepts_valid_configuration(self):
+        """Test valid netapp backend configuration."""
+        config = configuration.NetappConfiguration(
+            **{
+                "volume-backend-name": "netapp01",
+                "netapp-ca-certificate-file": "secret",
+                "protocol": "iscsi",
+            }
+        )
+        assert config.volume_backend_name == "netapp01"
+
+    def test_netapp_requires_netapp_ca_certificate_file(self):
+        """Test netapp-ca-certificate-file is required."""
+        kwargs = {
+            "volume-backend-name": "netapp01",
+            "netapp-ca-certificate-file": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["netapp-ca-certificate-file"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NetappConfiguration(**kwargs)
+
+    def test_netapp_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "netapp01",
+            "netapp-ca-certificate-file": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NetappConfiguration(**kwargs)
+
+    def test_netapp_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "netapp01",
+            "netapp-ca-certificate-file": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.NetappConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestNexentaConfiguration:
+    """Test the NexentaConfiguration class."""
+
+    def test_nexenta_accepts_valid_configuration(self):
+        """Test valid nexenta backend configuration."""
+        config = configuration.NexentaConfiguration(
+            **{"volume-backend-name": "nexenta01", "nexenta-rest-password": "secret"}
+        )
+        assert config.volume_backend_name == "nexenta01"
+
+    def test_nexenta_requires_nexenta_rest_password(self):
+        """Test nexenta-rest-password is required."""
+        kwargs = {"volume-backend-name": "nexenta01", "nexenta-rest-password": "secret"}
+        del kwargs["nexenta-rest-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NexentaConfiguration(**kwargs)
+
+    def test_nexenta_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "nexenta01", "nexenta-rest-password": "secret"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.NexentaConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestNimbleConfiguration:
+    """Test the NimbleConfiguration class."""
+
+    def test_nimble_accepts_valid_configuration(self):
+        """Test valid nimble backend configuration."""
+        config = configuration.NimbleConfiguration(
+            **{
+                "volume-backend-name": "nimble01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "iscsi",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_nimble_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NimbleConfiguration(**kwargs)
+
+    def test_nimble_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NimbleConfiguration(**kwargs)
+
+    def test_nimble_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NimbleConfiguration(**kwargs)
+
+    def test_nimble_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NimbleConfiguration(**kwargs)
+
+    def test_nimble_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.NimbleConfiguration(**kwargs)
+
+    def test_nimble_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "nimble01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "iscsi",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.NimbleConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestOpeneConfiguration:
+    """Test the OpeneConfiguration class."""
+
+    def test_opene_accepts_valid_configuration(self):
+        """Test valid opene backend configuration."""
+        config = configuration.OpeneConfiguration(
+            **{"volume-backend-name": "opene01", "chap-password-len": "secret"}
+        )
+        assert config.volume_backend_name == "opene01"
+
+    def test_opene_requires_chap_password_len(self):
+        """Test chap-password-len is required."""
+        kwargs = {"volume-backend-name": "opene01", "chap-password-len": "secret"}
+        del kwargs["chap-password-len"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.OpeneConfiguration(**kwargs)
+
+    def test_opene_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "opene01", "chap-password-len": "secret"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.OpeneConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestProphetstorConfiguration:
+    """Test the ProphetstorConfiguration class."""
+
+    def test_prophetstor_accepts_valid_configuration(self):
+        """Test valid prophetstor backend configuration."""
+        config = configuration.ProphetstorConfiguration(
+            **{
+                "volume-backend-name": "prophetstor01",
+                "protocol": "fc",
+                "enable-unsupported-driver": True,
+            }
+        )
+        assert config.volume_backend_name == "prophetstor01"
+
+    def test_prophetstor_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "prophetstor01",
+            "protocol": "fc",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.ProphetstorConfiguration(**kwargs)
+
+    def test_prophetstor_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "prophetstor01",
+            "protocol": "fc",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.ProphetstorConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestQnapConfiguration:
+    """Test the QnapConfiguration class."""
+
+    def test_qnap_accepts_valid_configuration(self):
+        """Test valid qnap backend configuration."""
+        config = configuration.QnapConfiguration(
+            **{
+                "volume-backend-name": "qnap01",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "enable-unsupported-driver": True,
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_qnap_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "qnap01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.QnapConfiguration(**kwargs)
+
+    def test_qnap_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "qnap01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.QnapConfiguration(**kwargs)
+
+    def test_qnap_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "qnap01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.QnapConfiguration(**kwargs)
+
+    def test_qnap_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "qnap01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.QnapConfiguration(**kwargs)
+
+    def test_qnap_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "qnap01",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.QnapConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestSandstoneConfiguration:
+    """Test the SandstoneConfiguration class."""
+
+    def test_sandstone_accepts_valid_configuration(self):
+        """Test valid sandstone backend configuration."""
+        config = configuration.SandstoneConfiguration(
+            **{"volume-backend-name": "sandstone01"}
+        )
+        assert config.volume_backend_name == "sandstone01"
+
+    def test_sandstone_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "sandstone01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.SandstoneConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestStxConfiguration:
+    """Test the StxConfiguration class."""
+
+    def test_stx_accepts_valid_configuration(self):
+        """Test valid stx backend configuration."""
+        config = configuration.StxConfiguration(**{"volume-backend-name": "stx01"})
+        assert config.volume_backend_name == "stx01"
+
+    def test_stx_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "stx01"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.StxConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestSynologyConfiguration:
+    """Test the SynologyConfiguration class."""
+
+    def test_synology_accepts_valid_configuration(self):
+        """Test valid synology backend configuration."""
+        config = configuration.SynologyConfiguration(
+            **{
+                "volume-backend-name": "synology01",
+                "synology-password": "secret",
+                "synology-one-time-pass": "secret",
+            }
+        )
+        assert config.volume_backend_name == "synology01"
+
+    def test_synology_requires_synology_password(self):
+        """Test synology-password is required."""
+        kwargs = {
+            "volume-backend-name": "synology01",
+            "synology-password": "secret",
+            "synology-one-time-pass": "secret",
+        }
+        del kwargs["synology-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SynologyConfiguration(**kwargs)
+
+    def test_synology_requires_synology_one_time_pass(self):
+        """Test synology-one-time-pass is required."""
+        kwargs = {
+            "volume-backend-name": "synology01",
+            "synology-password": "secret",
+            "synology-one-time-pass": "secret",
+        }
+        del kwargs["synology-one-time-pass"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.SynologyConfiguration(**kwargs)
+
+    def test_synology_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "synology01",
+            "synology-password": "secret",
+            "synology-one-time-pass": "secret",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.SynologyConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestToyouacs5000Configuration:
+    """Test the Toyouacs5000Configuration class."""
+
+    def test_toyouacs5000_accepts_valid_configuration(self):
+        """Test valid toyouacs5000 backend configuration."""
+        config = configuration.Toyouacs5000Configuration(
+            **{
+                "volume-backend-name": "toyouacs500001",
+                "san-ip": "10.0.0.1",
+                "san-login": "secret",
+                "san-password": "secret",
+                "protocol": "fc",
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.1"
+
+    def test_toyouacs5000_requires_san_ip(self):
+        """Test san-ip is required."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-ip"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Toyouacs5000Configuration(**kwargs)
+
+    def test_toyouacs5000_requires_san_login(self):
+        """Test san-login is required."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-login"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Toyouacs5000Configuration(**kwargs)
+
+    def test_toyouacs5000_requires_san_password(self):
+        """Test san-password is required."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        del kwargs["san-password"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Toyouacs5000Configuration(**kwargs)
+
+    def test_toyouacs5000_rejects_invalid_san_ip(self):
+        """Test that an invalid IP is rejected for san-ip."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["san-ip"] = "not-an-ip"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Toyouacs5000Configuration(**kwargs)
+
+    def test_toyouacs5000_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.Toyouacs5000Configuration(**kwargs)
+
+    def test_toyouacs5000_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "toyouacs500001",
+            "san-ip": "10.0.0.1",
+            "san-login": "secret",
+            "san-password": "secret",
+            "protocol": "fc",
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.Toyouacs5000Configuration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestVeritasaccessConfiguration:
+    """Test the VeritasaccessConfiguration class."""
+
+    def test_veritasaccess_accepts_valid_configuration(self):
+        """Test valid veritasaccess backend configuration."""
+        config = configuration.VeritasaccessConfiguration(
+            **{
+                "volume-backend-name": "veritasaccess01",
+                "enable-unsupported-driver": True,
+            }
+        )
+        assert config.volume_backend_name == "veritasaccess01"
+
+    def test_veritasaccess_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {
+            "volume-backend-name": "veritasaccess01",
+            "enable-unsupported-driver": True,
+        }
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.VeritasaccessConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestYadroConfiguration:
+    """Test the YadroConfiguration class."""
+
+    def test_yadro_accepts_valid_configuration(self):
+        """Test valid yadro backend configuration."""
+        config = configuration.YadroConfiguration(
+            **{"volume-backend-name": "yadro01", "protocol": "fc"}
+        )
+        assert config.volume_backend_name == "yadro01"
+
+    def test_yadro_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        kwargs = {"volume-backend-name": "yadro01", "protocol": "fc"}
+        kwargs["protocol"] = "invalid"
+        with pytest.raises(pydantic.ValidationError):
+            configuration.YadroConfiguration(**kwargs)
+
+    def test_yadro_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "yadro01", "protocol": "fc"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.YadroConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
+
+
+class TestZadaraConfiguration:
+    """Test the ZadaraConfiguration class."""
+
+    def test_zadara_accepts_valid_configuration(self):
+        """Test valid zadara backend configuration."""
+        config = configuration.ZadaraConfiguration(
+            **{"volume-backend-name": "zadara01", "zadara-access-key": "secret"}
+        )
+        assert config.volume_backend_name == "zadara01"
+
+    def test_zadara_requires_zadara_access_key(self):
+        """Test zadara-access-key is required."""
+        kwargs = {"volume-backend-name": "zadara01", "zadara-access-key": "secret"}
+        del kwargs["zadara-access-key"]
+        with pytest.raises(pydantic.ValidationError):
+            configuration.ZadaraConfiguration(**kwargs)
+
+    def test_zadara_allows_extra_fields(self):
+        """Test that extra driver-specific fields are accepted."""
+        kwargs = {"volume-backend-name": "zadara01", "zadara-access-key": "secret"}
+        kwargs["some-vendor-specific-opt"] = "value"
+        config = configuration.ZadaraConfiguration(**kwargs)
+        assert config.some_vendor_specific_opt == "value"
