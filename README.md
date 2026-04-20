@@ -328,7 +328,7 @@ Configure one or more Infinidat InfiniBox backends using the `infinidat.<backend
 
 **Required options:**
 * `infinidat.<backend-name>.volume-backend-name`  Unique name for this backend
-* `infinidat.<backend-name>.san-ip`               InfiniBox management IP or hostname
+* `infinidat.<backend-name>.san-ip`               InfiniBox management IP address
 * `infinidat.<backend-name>.san-login`            InfiniBox username
 * `infinidat.<backend-name>.san-password`         InfiniBox password
 * `infinidat.<backend-name>.infinidat-pool-name`  Pool name on InfiniBox for volume creation

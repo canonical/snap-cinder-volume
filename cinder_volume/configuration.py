@@ -13,7 +13,7 @@ import typing
 
 import pydantic
 import pydantic.alias_generators
-from pydantic import Field
+from pydantic import Field, model_validator
 
 
 def to_kebab(value: str) -> str:
@@ -278,12 +278,21 @@ class InfinidatConfiguration(BaseBackendConfiguration):
 
     infinidat_iscsi_netspaces: str | None = None
 
-    use_chap_auth: bool | None = True
+    use_chap_auth: bool = True
     chap_username: str | None = None
     chap_password: str | None = None
 
     infinidat_use_compression: bool | None = None
     max_over_subscription_ratio: float | None = None
+
+    @model_validator(mode="after")
+    def validate_iscsi_netspaces(self) -> "InfinidatConfiguration":
+        """Validate that infinidat_iscsi_netspaces is set when protocol is iscsi."""
+        if self.protocol == "iscsi" and not self.infinidat_iscsi_netspaces:
+            raise ValueError(
+                "infinidat_iscsi_netspaces is required when protocol is 'iscsi'"
+            )
+        return self
 
 
 class Configuration(BaseConfiguration):

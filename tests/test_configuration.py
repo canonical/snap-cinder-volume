@@ -527,9 +527,8 @@ class TestInfinidatConfiguration:
                 }
             )
 
-    @pytest.mark.parametrize("protocol", ["fc", "iscsi"])
-    def test_infinidat_accepts_valid_protocols(self, protocol):
-        """Test that fc and iscsi protocols are accepted."""
+    def test_infinidat_accepts_fc_protocol(self):
+        """Test that fc protocol is accepted."""
         config = configuration.InfinidatConfiguration(
             **{
                 "volume-backend-name": "infinibox01",
@@ -537,10 +536,25 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
-                "protocol": protocol,
+                "protocol": "fc",
             }
         )
-        assert config.protocol == protocol
+        assert config.protocol == "fc"
+
+    def test_infinidat_accepts_iscsi_protocol(self):
+        """Test that iscsi protocol is accepted with netspaces."""
+        config = configuration.InfinidatConfiguration(
+            **{
+                "volume-backend-name": "infinibox01",
+                "san-ip": "10.0.0.100",
+                "san-login": "admin",
+                "san-password": "secret",
+                "infinidat-pool-name": "cinder-pool",
+                "protocol": "iscsi",
+                "infinidat-iscsi-netspaces": "default_iscsi_space",
+            }
+        )
+        assert config.protocol == "iscsi"
 
     def test_infinidat_protocol_defaults_to_iscsi(self):
         """Test that protocol defaults to iscsi when not specified."""
@@ -551,9 +565,24 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
+                "infinidat-iscsi-netspaces": "default_iscsi_space",
             }
         )
         assert config.protocol == "iscsi"
+
+    def test_infinidat_iscsi_requires_netspaces(self):
+        """Test that iscsi protocol requires infinidat-iscsi-netspaces."""
+        with pytest.raises(pydantic.ValidationError, match="infinidat_iscsi_netspaces"):
+            configuration.InfinidatConfiguration(
+                **{
+                    "volume-backend-name": "infinibox01",
+                    "san-ip": "10.0.0.100",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "infinidat-pool-name": "cinder-pool",
+                    "protocol": "iscsi",
+                }
+            )
 
     def test_infinidat_optional_fields_default_correctly(self):
         """Test that optional fields have correct defaults."""
@@ -564,6 +593,7 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
+                "protocol": "fc",
             }
         )
         assert config.infinidat_iscsi_netspaces is None
@@ -582,6 +612,7 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
+                "protocol": "fc",
                 "max-over-subscription-ratio": 20.0,
             }
         )
@@ -603,6 +634,7 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
+                "protocol": "fc",
                 kebab_key: "test_value",
             }
         )
@@ -624,6 +656,7 @@ class TestInfinidatConfiguration:
                 "san-login": "admin",
                 "san-password": "secret",
                 "infinidat-pool-name": "cinder-pool",
+                "protocol": "fc",
                 kebab_key: "test_value",
             }
         )
