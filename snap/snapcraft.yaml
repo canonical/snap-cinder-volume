@@ -57,6 +57,7 @@ apps:
       - nvme-control
       - iscsi-initiator
       - dm-multipath
+      - etc-iscsi
 
 parts:
   openstack:
@@ -129,3 +130,9 @@ hooks:
       - network
       - network-control
       - firewall-control
+
+plugs:
+  etc-iscsi:
+    interface: system-files
+    write:
+      - /etc/iscsi
