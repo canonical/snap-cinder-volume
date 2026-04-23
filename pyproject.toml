@@ -13,6 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "coverage"]
+tics = ["pylint", "flake8"]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
