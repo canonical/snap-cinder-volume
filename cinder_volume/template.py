@@ -85,6 +85,10 @@ class Template:
         """Return the relative path of the template."""
         return self.dest / self.template()
 
+    def output_path(self) -> Path:
+        """Return the relative path of the rendered output file."""
+        return self.dest / self.filename.removesuffix(".j2")
+
     def template(self) -> str:
         """Return the template name or filename."""
         return self.template_name or self.filename

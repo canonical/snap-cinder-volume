@@ -14,6 +14,11 @@ confinement: strict
 assumes:
 - snapd2.73
 
+platforms:
+  amd64:
+  arm64:
+  s390x:
+
 environment:
   LC_ALL: C
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$SNAP/usr/local/bin:$SNAP/usr/local/sbin:$PATH
@@ -53,11 +58,13 @@ parts:
   openstack:
     plugin: nil
     stage-packages:
+      - python3-3parclient
       - python3-cinder
       - cinder-volume
       - sysfsutils
       - python3-rtslib-fb
       - python3-minimal
+      - python3-pkg-resources
       - python3-tz
       - ceph-common
       - nfs-common

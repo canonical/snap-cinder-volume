@@ -7,6 +7,8 @@ This module holds the definition of all configuration options the snap
 takes as input from `snap set`.
 """
 
+import base64
+import binascii
 import typing
 
 import pydantic
@@ -47,6 +49,7 @@ class CinderConfiguration(ParentConfig):
 
     project_id: str
     user_id: str
+    region_name: str | None = None
     image_volume_cache_enabled: bool = False
     image_volume_cache_max_size_gb: int = 0
     image_volume_cache_max_count: int = 0
@@ -61,6 +64,24 @@ class Settings(ParentConfig):
     enable_telemetry_notifications: bool = False
 
 
+class CAConfiguration(ParentConfig):
+    """Configuration for the main CA bundle used by the snap."""
+
+    bundle: str | None = None
+
+    @pydantic.field_validator("bundle", mode="before")
+    @classmethod
+    def decode_bundle(cls, value: str | None) -> str | None:
+        """Decode the base64-encoded bundle payload from snap config."""
+        if value is None or value == "":
+            return None
+        value = value.strip()
+        try:
+            return base64.b64decode(value, validate=True).decode()
+        except (binascii.Error, ValueError, UnicodeDecodeError) as exc:
+            raise ValueError("Invalid base64-encoded CA bundle") from exc
+
+
 class BaseConfiguration(ParentConfig):
     """Base configuration class.
 
@@ -68,6 +89,7 @@ class BaseConfiguration(ParentConfig):
     """
 
     settings: Settings = Settings()
+    ca: CAConfiguration = CAConfiguration()
     database: DatabaseConfiguration
     rabbitmq: RabbitMQConfiguration
     cinder: CinderConfiguration
@@ -132,7 +154,7 @@ class HitachiConfiguration(BaseBackendConfiguration):
 
     # Mandatory connection parameters
     san_ip: pydantic.IPvAnyAddress
-    san_username: str
+    san_login: str
     san_password: str
     hitachi_storage_id: str | int
     hitachi_pools: str  # comma‑separated list
@@ -212,6 +234,27 @@ class DellpowerstoreConfiguration(BaseBackendConfiguration):
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
+class HpethreeparConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **HPE Three Par Storage** Cinder driver.
+
+    This configuration supports iSCSI and Fibre Channel protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # HPE 3Par san controller IP
+    san_login: str  # HPE 3Par san controller username
+    san_password: str  # HPE 3Par san controller password
+    protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -224,6 +267,7 @@ class Configuration(BaseConfiguration):
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
+    hpethreepar: dict[str, HpethreeparConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -237,6 +281,7 @@ class Configuration(BaseConfiguration):
             ("hitachi", self.hitachi),
             ("pure", self.pure),
             ("dellsc", self.dellsc),
+            ("hpethreepar", self.hpethreepar),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types
