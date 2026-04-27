@@ -255,6 +255,544 @@ class HpethreeparConfiguration(BaseBackendConfiguration):
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
+class SolidfireConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **NetApp SolidFire** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class DatacoreConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **DataCoreVolume** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class DateraConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Datera** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class DellpowermaxConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell PowerMax** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class DellpowervaultConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell PowerVault** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class DellxtremioConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell XtremIO** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+    enable_unsupported_driver: typing.Literal[True]
+
+
+class FujitsueternusdxConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **FJDX FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    fujitsu_passwordless: str  # Use SSH key to connect to storage.
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class HpexpConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **HPE XP** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class IbmflashsystemcommonConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Ibmflashsystemcommon** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    enable_unsupported_driver: typing.Literal[True]
+
+
+class IbmflashsystemiscsiConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **FlashSystem iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class IbmgpfsConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **GPFS** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    gpfs_user_password: str  # Password for GPFS node user.
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class IbmibmstorageConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **IBMStorage** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class IbmstorwizesvcConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **StorwizeSVC FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class InfinidatConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **INFINIDAT InfiniBox** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class Inspuras13000Configuration(BaseBackendConfiguration):
+    """All options recognised by the **AS13000** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    as_13000_token_available_time: (
+        str  # The effective time of token validity in seconds.
+    )
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+
+
+class InspurinstorageConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **InStorageMCS FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class KaminarioConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Kaminario iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class LinstorConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **LinstorIscsi** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class MacrosanConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **MacroSAN iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    macrosan_sdas_password: str  # MacroSAN sdas devices' password
+    macrosan_replication_password: str  # MacroSAN replication devices' password
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+
+
+class NecvConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **VStorage FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class NetappConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **NetApp ONTAP** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    netapp_ca_certificate_file: str  # Absolute path to the trusted CA certificate file.
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|nvme)$")
+
+
+class NexentaConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Nexenta iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    nexenta_rest_password: str  # Password to connect to NexentaEdge.
+
+
+class NimbleConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **HPE Nimble Storage** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+
+
+class OpeneConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Jovian iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    chap_password_len: int  # Length of the random string for CHAP password.
+
+
+class ProphetstorConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **DPL FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+    enable_unsupported_driver: typing.Literal[True]
+
+
+class QnapConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **QNAP Storage** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    enable_unsupported_driver: typing.Literal[True]
+
+
+class SandstoneConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Sds iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class StxConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Stx** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # No additional required fields beyond BaseBackendConfiguration.
+
+
+class SynologyConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Syno iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    synology_password: str  # Password of administrator for logging in Synology storage.
+    synology_one_time_pass: (
+        str  # One-time password for OTP-enabled Synology admin login.
+    )
+
+
+class Toyouacs5000Configuration(BaseBackendConfiguration):
+    """All options recognised by the **Acs5000 FC** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
+    san_login: str  # Username for SAN controller
+    san_password: str  # Password for SAN controller
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class VeritasaccessConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **ACCESSIscsi** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    enable_unsupported_driver: typing.Literal[True]
+
+
+class YadroConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Tatlin FCVolume** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class ZadaraConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **ZadaraVPSA iSCSI** Cinder driver."""
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    zadara_access_key: str  # VPSA access key
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -268,6 +806,39 @@ class Configuration(BaseConfiguration):
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
+    solidfire: dict[str, SolidfireConfiguration] = {}
+    datacore: dict[str, DatacoreConfiguration] = {}
+    datera: dict[str, DateraConfiguration] = {}
+    dellpowermax: dict[str, DellpowermaxConfiguration] = {}
+    dellpowervault: dict[str, DellpowervaultConfiguration] = {}
+    dellxtremio: dict[str, DellxtremioConfiguration] = {}
+    fujitsueternusdx: dict[str, FujitsueternusdxConfiguration] = {}
+    hpexp: dict[str, HpexpConfiguration] = {}
+    ibmflashsystemcommon: dict[str, IbmflashsystemcommonConfiguration] = {}
+    ibmflashsystemiscsi: dict[str, IbmflashsystemiscsiConfiguration] = {}
+    ibmgpfs: dict[str, IbmgpfsConfiguration] = {}
+    ibmibmstorage: dict[str, IbmibmstorageConfiguration] = {}
+    ibmstorwizesvc: dict[str, IbmstorwizesvcConfiguration] = {}
+    infinidat: dict[str, InfinidatConfiguration] = {}
+    inspuras13000: dict[str, Inspuras13000Configuration] = {}
+    inspurinstorage: dict[str, InspurinstorageConfiguration] = {}
+    kaminario: dict[str, KaminarioConfiguration] = {}
+    linstor: dict[str, LinstorConfiguration] = {}
+    macrosan: dict[str, MacrosanConfiguration] = {}
+    necv: dict[str, NecvConfiguration] = {}
+    netapp: dict[str, NetappConfiguration] = {}
+    nexenta: dict[str, NexentaConfiguration] = {}
+    nimble: dict[str, NimbleConfiguration] = {}
+    opene: dict[str, OpeneConfiguration] = {}
+    prophetstor: dict[str, ProphetstorConfiguration] = {}
+    qnap: dict[str, QnapConfiguration] = {}
+    sandstone: dict[str, SandstoneConfiguration] = {}
+    stx: dict[str, StxConfiguration] = {}
+    synology: dict[str, SynologyConfiguration] = {}
+    toyouacs5000: dict[str, Toyouacs5000Configuration] = {}
+    veritasaccess: dict[str, VeritasaccessConfiguration] = {}
+    yadro: dict[str, YadroConfiguration] = {}
+    zadara: dict[str, ZadaraConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -282,6 +853,39 @@ class Configuration(BaseConfiguration):
             ("pure", self.pure),
             ("dellsc", self.dellsc),
             ("hpethreepar", self.hpethreepar),
+            ("solidfire", self.solidfire),
+            ("datacore", self.datacore),
+            ("datera", self.datera),
+            ("dellpowermax", self.dellpowermax),
+            ("dellpowervault", self.dellpowervault),
+            ("dellxtremio", self.dellxtremio),
+            ("fujitsueternusdx", self.fujitsueternusdx),
+            ("hpexp", self.hpexp),
+            ("ibmflashsystemcommon", self.ibmflashsystemcommon),
+            ("ibmflashsystemiscsi", self.ibmflashsystemiscsi),
+            ("ibmgpfs", self.ibmgpfs),
+            ("ibmibmstorage", self.ibmibmstorage),
+            ("ibmstorwizesvc", self.ibmstorwizesvc),
+            ("infinidat", self.infinidat),
+            ("inspuras13000", self.inspuras13000),
+            ("inspurinstorage", self.inspurinstorage),
+            ("kaminario", self.kaminario),
+            ("linstor", self.linstor),
+            ("macrosan", self.macrosan),
+            ("necv", self.necv),
+            ("netapp", self.netapp),
+            ("nexenta", self.nexenta),
+            ("nimble", self.nimble),
+            ("opene", self.opene),
+            ("prophetstor", self.prophetstor),
+            ("qnap", self.qnap),
+            ("sandstone", self.sandstone),
+            ("stx", self.stx),
+            ("synology", self.synology),
+            ("toyouacs5000", self.toyouacs5000),
+            ("veritasaccess", self.veritasaccess),
+            ("yadro", self.yadro),
+            ("zadara", self.zadara),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types
