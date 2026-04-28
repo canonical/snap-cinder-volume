@@ -414,3 +414,107 @@ class TestHpethreeparConfiguration:
         assert config.protocol == "iscsi"
         assert config.hpe3par_iscsi_ips == "10.0.0.11,10.0.0.12"
         assert config.hpe3par_iscsi_chap_enabled == "true"
+
+
+class TestInfinidatConfiguration:
+    """Test the InfinidatConfiguration class."""
+
+    def test_infinidat_accepts_valid_configuration(self):
+        """Test valid Infinidat backend configuration."""
+        config = configuration.InfinidatConfiguration(
+            **{
+                "volume-backend-name": "infinibox01",
+                "san-ip": "10.0.0.100",
+                "san-login": "admin",
+                "san-password": "secret",
+                "infinidat-pool-name": "cinder-pool",
+                "protocol": "iscsi",
+                "infinidat-iscsi-netspaces": "default_iscsi_space",
+                "use-chap-auth": True,
+            }
+        )
+        assert str(config.san_ip) == "10.0.0.100"
+        assert config.san_login == "admin"
+        assert config.infinidat_pool_name == "cinder-pool"
+        assert config.protocol == "iscsi"
+        assert config.infinidat_iscsi_netspaces == "default_iscsi_space"
+        assert config.use_chap_auth is True
+
+    def test_infinidat_requires_mandatory_fields(self):
+        """Test required fields are validated for Infinidat backends."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(
+                **{
+                    "volume-backend-name": "infinibox01",
+                    "san-login": "admin",
+                    "infinidat-pool-name": "cinder-pool",
+                }
+            )
+
+    def test_infinidat_rejects_invalid_protocol(self):
+        """Test that an invalid protocol value is rejected."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.InfinidatConfiguration(
+                **{
+                    "volume-backend-name": "infinibox01",
+                    "san-ip": "10.0.0.100",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "infinidat-pool-name": "cinder-pool",
+                    "protocol": "nvme",
+                }
+            )
+
+    def test_infinidat_accepts_fc_protocol_without_iscsi_netspaces(self):
+        """Test that fc protocol does not require iSCSI netspaces."""
+        config = configuration.InfinidatConfiguration(
+            **{
+                "volume-backend-name": "infinibox01",
+                "san-ip": "10.0.0.100",
+                "san-login": "admin",
+                "san-password": "secret",
+                "infinidat-pool-name": "cinder-pool",
+                "protocol": "fc",
+            }
+        )
+        assert config.protocol == "fc"
+
+    def test_infinidat_iscsi_requires_netspaces(self):
+        """Test that iscsi protocol requires infinidat-iscsi-netspaces."""
+        with pytest.raises(pydantic.ValidationError, match="infinidat_iscsi_netspaces"):
+            configuration.InfinidatConfiguration(
+                **{
+                    "volume-backend-name": "infinibox01",
+                    "san-ip": "10.0.0.100",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "infinidat-pool-name": "cinder-pool",
+                    "protocol": "iscsi",
+                }
+            )
+
+    def test_infinidat_serializes_defined_fields(self):
+        """Test serialization of defined Infinidat fields."""
+        config = configuration.InfinidatConfiguration(
+            **{
+                "volume-backend-name": "infinibox01",
+                "san-ip": "10.0.0.100",
+                "san-login": "admin",
+                "san-password": "secret",
+                "infinidat-pool-name": "cinder-pool",
+                "protocol": "iscsi",
+                "infinidat-iscsi-netspaces": "default_iscsi_space",
+                "use-chap-auth": True,
+                "chap-username": "chapuser",
+                "chap-password": "chappass",
+                "infinidat-use-compression": True,
+            }
+        )
+        data = config.model_dump(by_alias=True)
+        assert data["volume_backend_name"] == "infinibox01"
+        assert str(data["san_ip"]) == "10.0.0.100"
+        assert data["infinidat_iscsi_netspaces"] == "default_iscsi_space"
+        assert data["use_chap_auth"] is True
+        assert data["chap_username"] == "chapuser"
+        assert data["chap_password"] == "chappass"
+        assert data["infinidat_use_compression"] is True
