@@ -425,3 +425,86 @@ class TestJinjaHelperFunctions:
 
         result = context.backend_ctx(mock_ctx)
         assert result == {"san_ip": "10.0.0.1", "san_login": "admin"}
+
+
+class TestInfinidatBackendContext:
+    """Test the InfinidatBackendContext class."""
+
+    def test_infinidat_context_sets_volume_driver(self):
+        """Test that context sets the correct Infinidat volume driver."""
+        backend_config = {
+            "volume_backend_name": "infinibox01",
+            "san_ip": "10.0.0.100",
+            "protocol": "iscsi",
+        }
+        ctx = context.InfinidatBackendContext("infinibox01", backend_config)
+        result = ctx.context()
+        assert ctx.supports_cluster is True
+        assert (
+            result["volume_driver"]
+            == "cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
+        )
+
+    def test_infinidat_protocol_hidden_from_cinder_context(self):
+        """Test that protocol is hidden from the cinder context output."""
+        backend_config = {
+            "volume_backend_name": "infinibox01",
+            "protocol": "iscsi",
+            "san_ip": "10.0.0.100",
+        }
+        ctx = context.InfinidatBackendContext("infinibox01", backend_config)
+        result = ctx.cinder_context()
+        assert "protocol" not in result
+        assert "volume_driver" in result
+        assert "san_ip" in result
+
+    def test_infinidat_template_rendering(self):
+        """Test rendering Infinidat backend configuration template."""
+        template_str = """[{{ cinder_name() }}]
+{%- for key, value in cinder_ctx().items() %}
+{{ key }} = {{ value }}
+{%- endfor %}
+"""
+        env = jinja2.Environment(
+            loader=jinja2.DictLoader({"backend.conf.j2": template_str})
+        )
+        env.globals.update(
+            {
+                "cinder_name": context.cinder_name,
+                "cinder_ctx": context.cinder_ctx,
+            }
+        )
+
+        infinidat_ctx = context.InfinidatBackendContext(
+            "infinibox01",
+            {
+                "volume_backend_name": "infinibox01",
+                "san_ip": "10.0.0.100",
+                "san_login": "admin",
+                "san_password": "secret",
+                "infinidat_pool_name": "cinder-pool",
+                "protocol": "iscsi",
+                "infinidat_iscsi_netspaces": "default_iscsi_space",
+            },
+        )
+
+        test_context = {
+            context.CINDER_CTX_KEY: "infinibox01",
+            "cinder_backends": {
+                "contexts": {"infinibox01": infinidat_ctx.cinder_context()}
+            },
+        }
+
+        template = env.get_template("backend.conf.j2")
+        rendered = template.render(**test_context)
+
+        assert "[infinibox01]" in rendered
+        assert (
+            "volume_driver = cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
+            in rendered
+        )
+        assert "infinidat_pool_name = cinder-pool" in rendered
+        assert "san_ip = 10.0.0.100" in rendered
+        assert "infinidat_iscsi_netspaces = default_iscsi_space" in rendered
+        # Protocol should be hidden
+        assert "protocol" not in rendered
