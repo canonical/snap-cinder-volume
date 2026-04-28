@@ -13,7 +13,7 @@ import typing
 
 import pydantic
 import pydantic.alias_generators
-from pydantic import Field
+from pydantic import Field, model_validator
 
 
 def to_kebab(value: str) -> str:
@@ -255,6 +255,46 @@ class HpethreeparConfiguration(BaseBackendConfiguration):
     protocol: str = Field(default="fc", pattern="^(iscsi|fc)$")
 
 
+class InfinidatConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Infinidat InfiniBox** Cinder driver.
+
+    This configuration supports iSCSI and Fibre Channel protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    san_ip: pydantic.IPvAnyAddress
+    san_login: str
+    san_password: str
+    infinidat_pool_name: str
+
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+
+    infinidat_iscsi_netspaces: str | None = None
+
+    use_chap_auth: bool = True
+    chap_username: str | None = None
+    chap_password: str | None = None
+
+    infinidat_use_compression: bool | None = None
+    max_over_subscription_ratio: float | None = None
+
+    @model_validator(mode="after")
+    def validate_iscsi_netspaces(self) -> "InfinidatConfiguration":
+        """Validate that infinidat_iscsi_netspaces is set when protocol is iscsi."""
+        if self.protocol == "iscsi" and not self.infinidat_iscsi_netspaces:
+            raise ValueError(
+                "infinidat_iscsi_netspaces is required when protocol is 'iscsi'"
+            )
+        return self
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -268,6 +308,7 @@ class Configuration(BaseConfiguration):
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
+    infinidat: dict[str, InfinidatConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -282,6 +323,7 @@ class Configuration(BaseConfiguration):
             ("pure", self.pure),
             ("dellsc", self.dellsc),
             ("hpethreepar", self.hpethreepar),
+            ("infinidat", self.infinidat),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types
