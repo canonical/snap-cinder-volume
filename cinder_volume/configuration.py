@@ -486,6 +486,20 @@ class InfinidatConfiguration(BaseBackendConfiguration):
     san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
     san_login: str  # Username for SAN controller
     san_password: str  # Password for SAN controller
+    infinidat_pool_name: typing.Optional[str] = None  # Pool name on InfiniBox
+    protocol: typing.Optional[str] = Field(
+        default=None, pattern="^(iscsi|fc)$"
+    )  # Transport protocol
+    infinidat_iscsi_netspaces: typing.Optional[str] = None  # iSCSI netspace names
+
+    @model_validator(mode="after")
+    def _iscsi_requires_netspaces(self) -> "InfinidatConfiguration":
+        """Require infinidat_iscsi_netspaces when protocol is iscsi."""
+        if self.protocol == "iscsi" and not self.infinidat_iscsi_netspaces:
+            raise ValueError(
+                "infinidat_iscsi_netspaces is required when protocol is iscsi"
+            )
+        return self
 
 
 class Inspuras13000Configuration(BaseBackendConfiguration):

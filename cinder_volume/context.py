@@ -455,23 +455,6 @@ class IbmstorwizesvcBackendContext(BaseBackendContext):
         return context
 
 
-class InfinidatBackendContext(BaseBackendContext):
-    """Render a INFINIDAT InfiniBox backend stanza."""
-
-    def __init__(self, backend_name: str, backend_config: dict):
-        """Initialize with backend name and config."""
-        super().__init__(backend_name, backend_config)
-        self.supports_cluster = False  # cluster not supported
-
-    def context(self) -> dict:
-        """Return context for INFINIDAT InfiniBox backend."""
-        context = dict(super().context())
-        context["volume_driver"] = (
-            "cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
-        )
-        return context
-
-
 class Inspuras13000BackendContext(BaseBackendContext):
     """Render a AS13000 backend stanza."""
 
