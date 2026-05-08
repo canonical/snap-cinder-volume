@@ -9,6 +9,13 @@ import jinja2
 from cinder_volume import cinder_volume, template
 
 
+def _get_section(rendered: str, section: str) -> str:
+    """Extract the content of a named INI section from a rendered config string."""
+    start = rendered.index(f"\n[{section}]\n") + len(f"\n[{section}]\n")
+    next_section = rendered.find("\n[", start)
+    return rendered[start:next_section] if next_section != -1 else rendered[start:]
+
+
 class TestGenericCinderVolume:
     """Runtime-oriented tests for GenericCinderVolume."""
 
@@ -76,26 +83,32 @@ class TestGenericCinderVolume:
             "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/"
             "receive-ca-bundle.pem" in rendered
         )
+        default_section = rendered[: rendered.index("\n[nova]\n")]
         assert (
             "glance_ca_certificates_file = "
             "/var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
-            in rendered
+            in default_section
         )
-        assert "glance_api_insecure = false" in rendered
+        assert "glance_api_insecure = false" in default_section
         assert "\n[nova]\n" in rendered
         assert "\n[barbican]\n" in rendered
         assert "\n[glance]\n" in rendered
-        assert rendered.count("interface = internal") == 2
-        assert "valid_interfaces = internal" in rendered
-        assert "service_type = image" in rendered
-        assert "service_name = glance" in rendered
-        assert rendered.count("region_name = RegionOne") == 3
-        assert (
-            rendered.count(
-                "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
-            )
-            == 3
-        )
+        nova_section = _get_section(rendered, "nova")
+        barbican_section = _get_section(rendered, "barbican")
+        glance_section = _get_section(rendered, "glance")
+        assert "interface = internal" in nova_section
+        assert "interface = internal" in barbican_section
+        assert "glance_catalog_info = image:glance:internalURL" in default_section
+        assert "valid_interfaces = internal" not in rendered
+        assert "service_type = image" not in rendered
+        assert "service_name = glance" not in rendered
+        assert "region_name = RegionOne" in nova_section
+        assert "region_name = RegionOne" in barbican_section
+        assert "region_name = RegionOne" in glance_section
+        cafile = "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
+        assert cafile in nova_section
+        assert cafile in barbican_section
+        assert cafile in glance_section
         assert "enabled_backends = ceph\ncafile =" not in rendered
 
     def test_cinder_conf_skips_ca_settings_when_ca_bundle_missing(self):
@@ -128,6 +141,8 @@ class TestGenericCinderVolume:
 
         assert "glance_ca_certificates_file =" not in rendered
         assert "glance_api_insecure = false" not in rendered
+        default_section = rendered[: rendered.index("\n[nova]\n")]
+        assert "glance_catalog_info = image:glance:internalURL" in default_section
         assert "cafile =" not in rendered
         assert "region_name =" not in rendered
         assert "\n[nova]\n" in rendered
@@ -166,12 +181,22 @@ class TestGenericCinderVolume:
         assert "\n[nova]\n" in rendered
         assert "\n[barbican]\n" in rendered
         assert "\n[glance]\n" in rendered
-        assert rendered.count("interface = internal") == 2
-        assert "valid_interfaces = internal" in rendered
-        assert "service_type = image" in rendered
-        assert "service_name = glance" in rendered
-        assert rendered.count("region_name = RegionOne") == 3
-        assert "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/" not in rendered
+        default_section = rendered[: rendered.index("\n[nova]\n")]
+        nova_section = _get_section(rendered, "nova")
+        barbican_section = _get_section(rendered, "barbican")
+        glance_section = _get_section(rendered, "glance")
+        assert "interface = internal" in nova_section
+        assert "interface = internal" in barbican_section
+        assert "glance_catalog_info = image:glance:internalURL" in default_section
+        assert "valid_interfaces = internal" not in rendered
+        assert "service_type = image" not in rendered
+        assert "service_name = glance" not in rendered
+        assert "region_name = RegionOne" in nova_section
+        assert "region_name = RegionOne" in barbican_section
+        assert "region_name = RegionOne" in glance_section
+        assert "cafile =" not in nova_section
+        assert "cafile =" not in barbican_section
+        assert "cafile =" not in glance_section
 
     def test_cinder_conf_renders_cluster_when_supported_and_set(self):
         """Cluster should be rendered when all enabled backends support it."""
@@ -200,7 +225,8 @@ class TestGenericCinderVolume:
             cinder_backends={"enabled_backends": "ceph", "cluster_ok": True},
         )
 
-        assert "cluster = cinder-cluster-a" in rendered
+        default_section = rendered[: rendered.index("\n[nova]\n")]
+        assert "cluster = cinder-cluster-a" in default_section
 
     def test_cinder_conf_skips_cluster_when_backend_does_not_support_it(self):
         """Cluster should not be rendered when any enabled backend blocks it."""
