@@ -279,6 +279,7 @@ class InfinidatConfiguration(BaseBackendConfiguration):
     infinidat_iscsi_netspaces: str | None = None
 
     use_chap_auth: bool = True
+    driver_use_ssl: bool | None = None
     chap_username: str | None = None
     chap_password: str | None = None
 

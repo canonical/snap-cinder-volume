@@ -449,19 +449,21 @@ class InfinidatBackendContext(BaseBackendContext):
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        self.supports_cluster = True
+        self.supports_cluster = False
 
     def context(self) -> dict:
         """Return context for Infinidat backend."""
         context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "iscsi").lower()
 
-        # Infinidat uses a single driver class for both iSCSI and FC;
-        # the protocol is controlled by configuration options.
+        # The upstream driver uses a single class for both protocols and
+        # expects the selected protocol under `infinidat_storage_protocol`.
         context.update(
             {
                 "volume_driver": (
                     "cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
                 ),
+                "infinidat_storage_protocol": protocol,
             }
         )
         return context
