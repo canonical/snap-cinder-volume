@@ -20,6 +20,7 @@ default_volume_type = {{ cinder.default_volume_type }}
 cluster = {{ cinder.cluster }}
 {% endif %}
 enabled_backends = {{ cinder_backends.enabled_backends }}
+glance_catalog_info = image:glance:internalURL
 {% if ca and ca.bundle %}
 glance_ca_certificates_file = {{ snap_paths.common }}/etc/ssl/certs/receive-ca-bundle.pem
 glance_api_insecure = false
@@ -44,9 +45,6 @@ cafile = {{ snap_paths.common }}/etc/ssl/certs/receive-ca-bundle.pem
 {% endif %}
 
 [glance]
-service_type = image
-service_name = glance
-valid_interfaces = internal
 {% if cinder.region_name %}
 region_name = {{ cinder.region_name }}
 {% endif %}
