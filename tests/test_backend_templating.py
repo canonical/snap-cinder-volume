@@ -439,22 +439,24 @@ class TestInfinidatBackendContext:
         }
         ctx = context.InfinidatBackendContext("infinibox01", backend_config)
         result = ctx.context()
-        assert ctx.supports_cluster is True
+        assert ctx.supports_cluster is False
         assert (
             result["volume_driver"]
             == "cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
         )
+        assert result["infinidat_storage_protocol"] == "iscsi"
 
     def test_infinidat_protocol_hidden_from_cinder_context(self):
-        """Test that protocol is hidden from the cinder context output."""
+        """Test that protocol is mapped to the upstream driver option."""
         backend_config = {
             "volume_backend_name": "infinibox01",
-            "protocol": "iscsi",
+            "protocol": "fc",
             "san_ip": "10.0.0.100",
         }
         ctx = context.InfinidatBackendContext("infinibox01", backend_config)
         result = ctx.cinder_context()
         assert "protocol" not in result
+        assert result["infinidat_storage_protocol"] == "fc"
         assert "volume_driver" in result
         assert "san_ip" in result
 
@@ -503,8 +505,9 @@ class TestInfinidatBackendContext:
             "volume_driver = cinder.volume.drivers.infinidat.InfiniboxVolumeDriver"
             in rendered
         )
+        assert "infinidat_storage_protocol = iscsi" in rendered
         assert "infinidat_pool_name = cinder-pool" in rendered
         assert "san_ip = 10.0.0.100" in rendered
         assert "infinidat_iscsi_netspaces = default_iscsi_space" in rendered
-        # Protocol should be hidden
-        assert "protocol" not in rendered
+        # The raw Sunbeam protocol key should not be rendered.
+        assert "\nprotocol =" not in rendered
