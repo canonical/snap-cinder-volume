@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import jinja2
 
-from cinder_volume import cinder_volume, template
+from cinder_volume import cinder_volume, context, template
 
 
 def _get_section(rendered: str, section: str) -> str:
@@ -50,6 +50,34 @@ class TestGenericCinderVolume:
 
         snap_service.restart.assert_called_once_with()
         snap_service.start.assert_not_called()
+
+    def test_backend_contexts_discovers_infinidat_backend(self):
+        """Configured Infinidat backends should be loaded at runtime."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.config.get_options.return_value.as_dict.return_value = {
+            "database": {"url": "sqlite:///test.db"},
+            "rabbitmq": {"url": "amqp://localhost"},
+            "cinder": {"project-id": "project-id", "user-id": "user-id"},
+            "infinidat": {
+                "infinibox01": {
+                    "volume-backend-name": "infinibox01",
+                    "san-ip": "10.0.0.100",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "infinidat-pool-name": "cinder-pool",
+                    "protocol": "fc",
+                }
+            },
+        }
+
+        backend_contexts = service.backend_contexts(snap)
+
+        assert list(backend_contexts.contexts) == ["infinibox01"]
+        assert isinstance(
+            backend_contexts.contexts["infinibox01"], context.InfinidatBackendContext
+        )
+        assert backend_contexts.context()["cluster_ok"] is False
 
     def test_cinder_conf_renders_cafile_when_ca_bundle_exists(self):
         """The template should render CA settings in the service-specific sections."""

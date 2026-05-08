@@ -464,7 +464,7 @@ class TestInfinidatBackendContext:
         ctx = context.InfinidatBackendContext(
             "mybackend", {"volume_backend_name": "mybackend"}
         )
-        assert ctx.supports_cluster is True
+        assert ctx.supports_cluster is False
 
     def test_infinidat_volume_driver(self):
         """Test volume_driver is set correctly."""
