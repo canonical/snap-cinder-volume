@@ -486,11 +486,17 @@ class InfinidatConfiguration(BaseBackendConfiguration):
     san_ip: pydantic.IPvAnyAddress  # IP address of SAN controller
     san_login: str  # Username for SAN controller
     san_password: str  # Password for SAN controller
-    infinidat_pool_name: typing.Optional[str] = None  # Pool name on InfiniBox
-    protocol: typing.Optional[str] = Field(
-        default=None, pattern="^(iscsi|fc)$"
-    )  # Transport protocol
-    infinidat_iscsi_netspaces: typing.Optional[str] = None  # iSCSI netspace names
+    infinidat_pool_name: str  # Pool name on InfiniBox
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+    infinidat_iscsi_netspaces: str | None = None  # iSCSI netspace names
+
+    use_chap_auth: bool = True
+    driver_use_ssl: bool | None = None
+    chap_username: str | None = None
+    chap_password: str | None = None
+
+    infinidat_use_compression: bool | None = None
+    max_over_subscription_ratio: float | None = None
 
     @model_validator(mode="after")
     def _iscsi_requires_netspaces(self) -> "InfinidatConfiguration":
@@ -820,6 +826,7 @@ class Configuration(BaseConfiguration):
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
+    infinidat: dict[str, InfinidatConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -834,6 +841,7 @@ class Configuration(BaseConfiguration):
             ("pure", self.pure),
             ("dellsc", self.dellsc),
             ("hpethreepar", self.hpethreepar),
+            ("infinidat", self.infinidat),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types

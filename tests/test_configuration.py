@@ -1336,6 +1336,7 @@ class TestInfinidatConfiguration:
                 "protocol": "iscsi",
                 "infinidat-iscsi-netspaces": "default_iscsi_space",
                 "use-chap-auth": True,
+                "driver-use-ssl": True,
                 "chap-username": "chapuser",
                 "chap-password": "chappass",
                 "infinidat-use-compression": True,
@@ -1346,6 +1347,7 @@ class TestInfinidatConfiguration:
         assert str(data["san_ip"]) == "10.0.0.100"
         assert data["infinidat_iscsi_netspaces"] == "default_iscsi_space"
         assert data["use_chap_auth"] is True
+        assert data["driver_use_ssl"] is True
         assert data["chap_username"] == "chapuser"
         assert data["chap_password"] == "chappass"
         assert data["infinidat_use_compression"] is True
@@ -2227,3 +2229,28 @@ class TestZadaraConfiguration:
         kwargs["some-vendor-specific-opt"] = "value"
         config = configuration.ZadaraConfiguration(**kwargs)
         assert config.some_vendor_specific_opt == "value"
+
+
+class TestRootConfiguration:
+    """Test backend registration in the root configuration model."""
+
+    def test_root_configuration_registers_infinidat_backend(self):
+        """Infinidat backends should be preserved for runtime discovery."""
+        config = configuration.Configuration(
+            database={"url": "sqlite:///test.db"},
+            rabbitmq={"url": "amqp://localhost"},
+            cinder={"project-id": "project-id", "user-id": "user-id"},
+            infinidat={
+                "infinibox01": {
+                    "volume-backend-name": "infinibox01",
+                    "san-ip": "10.0.0.100",
+                    "san-login": "admin",
+                    "san-password": "secret",
+                    "infinidat-pool-name": "cinder-pool",
+                    "protocol": "fc",
+                }
+            },
+        )
+
+        assert "infinibox01" in config.infinidat
+        assert config.infinidat["infinibox01"].volume_backend_name == "infinibox01"
