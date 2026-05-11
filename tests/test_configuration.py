@@ -505,6 +505,7 @@ class TestInfinidatConfiguration:
                 "protocol": "iscsi",
                 "infinidat-iscsi-netspaces": "default_iscsi_space",
                 "use-chap-auth": True,
+                "driver-use-ssl": True,
                 "chap-username": "chapuser",
                 "chap-password": "chappass",
                 "infinidat-use-compression": True,
@@ -515,6 +516,7 @@ class TestInfinidatConfiguration:
         assert str(data["san_ip"]) == "10.0.0.100"
         assert data["infinidat_iscsi_netspaces"] == "default_iscsi_space"
         assert data["use_chap_auth"] is True
+        assert data["driver_use_ssl"] is True
         assert data["chap_username"] == "chapuser"
         assert data["chap_password"] == "chappass"
         assert data["infinidat_use_compression"] is True

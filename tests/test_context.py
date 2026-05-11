@@ -62,3 +62,14 @@ class TestCABundleSet:
         """Helper should be false when the bundle is absent."""
         assert context.ca_bundle_set({"ca": {"bundle": None}}) is False
         assert context.ca_bundle_set({}) is False
+
+
+class TestInfinidatBackendContext:
+    """Test the Infinidat backend context."""
+
+    def test_infinidat_supports_cluster(self):
+        """Infinidat backends should disable Cinder clustering."""
+        ctx = context.InfinidatBackendContext(
+            "mybackend", {"volume_backend_name": "mybackend"}
+        )
+        assert ctx.supports_cluster is False
