@@ -100,6 +100,7 @@ parts:
       - libffi-dev
       - libssl-dev
       - pkg-config
+      - python3-venv
     build-environment:
       - MATURIN_NO_INSTALL_RUST: "1"
     python-requirements:
