@@ -177,6 +177,679 @@ class BaseBackendContext(Context):
         pass
 
 
+class SolidfireBackendContext(BaseBackendContext):
+    """Render a NetApp SolidFire backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True  # cluster supported
+
+    def context(self) -> dict:
+        """Return context for NetApp SolidFire backend."""
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.solidfire.SolidFireDriver"
+        return context
+
+
+class DatacoreBackendContext(BaseBackendContext):
+    """Render a DataCoreVolume backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for DataCoreVolume backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.datacore.fc.FibreChannelVolumeDriver"
+        )
+        return context
+
+
+class DateraBackendContext(BaseBackendContext):
+    """Render a Datera backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Datera backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.datera.datera_iscsi.DateraDriver"
+        )
+        return context
+
+
+class DellpowermaxBackendContext(BaseBackendContext):
+    """Render a Dell PowerMax backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True  # cluster supported
+
+    def context(self) -> dict:
+        """Return context for Dell PowerMax backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.dell_emc.powermax.fc.PowerMaxFCDriver",
+            "iscsi": (
+                "cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class DellpowervaultBackendContext(BaseBackendContext):
+    """Render a Dell PowerVault backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Dell PowerVault backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.dell_emc.powervault.fc.PVMEFCDriver",
+            "iscsi": "cinder.volume.drivers.dell_emc.powervault.iscsi.PVMEISCSIDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class DellxtremioBackendContext(BaseBackendContext):
+    """Render a Dell XtremIO backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Dell XtremIO backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "iscsi").lower()
+
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.dell_emc.xtremio.XtremIOISCSIDriver",
+            "fc": "cinder.volume.drivers.dell_emc.xtremio.XtremIOFCDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["iscsi"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class FujitsueternusdxBackendContext(BaseBackendContext):
+    """Render a FJDX FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for FJDX FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": (
+                "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver"
+            ),
+            "iscsi": (
+                "cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi"
+                ".FJDXISCSIDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class HpexpBackendContext(BaseBackendContext):
+    """Render a HPE XP backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for HPE XP backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.hpe.xp.hpe_xp_fc.HPEXPFCDriver",
+            "iscsi": "cinder.volume.drivers.hpe.xp.hpe_xp_iscsi.HPEXPISCSIDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class IbmflashsystemcommonBackendContext(BaseBackendContext):
+    """Render a Ibmflashsystemcommon backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Ibmflashsystemcommon backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.ibm.flashsystem_common.FlashSystemDriver"
+        )
+        return context
+
+
+class IbmflashsystemiscsiBackendContext(BaseBackendContext):
+    """Render a FlashSystem iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for FlashSystem iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.ibm.flashsystem_iscsi.FlashSystemISCSIDriver"
+        )
+        return context
+
+
+class IbmgpfsBackendContext(BaseBackendContext):
+    """Render a GPFS backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for GPFS backend."""
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.ibm.gpfs.GPFSDriver"
+        return context
+
+
+class IbmibmstorageBackendContext(BaseBackendContext):
+    """Render a IBMStorage backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for IBMStorage backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.ibm.ibm_storage.ibm_storage.IBMStorageDriver"
+        )
+        return context
+
+
+class IbmstorwizesvcBackendContext(BaseBackendContext):
+    """Render a StorwizeSVC FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for StorwizeSVC FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": (
+                "cinder.volume.drivers.ibm.storwize_svc.storwize_svc_fc"
+                ".StorwizeSVCFCDriver"
+            ),
+            "iscsi": (
+                "cinder.volume.drivers.ibm.storwize_svc.storwize_svc_iscsi"
+                ".StorwizeSVCISCSIDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class Inspuras13000BackendContext(BaseBackendContext):
+    """Render a AS13000 backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for AS13000 backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.inspur.as13000.as13000_driver.AS13000Driver"
+        )
+        return context
+
+
+class InspurinstorageBackendContext(BaseBackendContext):
+    """Render a InStorageMCS FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for InStorageMCS FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": (
+                "cinder.volume.drivers.inspur.instorage.instorage_fc"
+                ".InStorageMCSFCDriver"
+            ),
+            "iscsi": (
+                "cinder.volume.drivers.inspur.instorage.instorage_iscsi"
+                ".InStorageMCSISCSIDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class KaminarioBackendContext(BaseBackendContext):
+    """Render a Kaminario iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Kaminario iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.kaminario.kaminario_iscsi.KaminarioISCSIDriver"
+        )
+        return context
+
+
+class LinstorBackendContext(BaseBackendContext):
+    """Render a LinstorIscsi backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for LinstorIscsi backend."""
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.linstordrv.LinstorIscsiDriver"
+        return context
+
+
+class MacrosanBackendContext(BaseBackendContext):
+    """Render a MacroSAN iSCSI backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for MacroSAN iSCSI backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "iscsi").lower()
+
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.macrosan.driver.MacroSANISCSIDriver",
+            "fc": "cinder.volume.drivers.macrosan.driver.MacroSANFCDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["iscsi"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class NecvBackendContext(BaseBackendContext):
+    """Render a VStorage FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for VStorage FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.nec.v.nec_v_fc.VStorageFCDriver",
+            "iscsi": "cinder.volume.drivers.nec.v.nec_v_iscsi.VStorageISCSIDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class NetappBackendContext(BaseBackendContext):
+    """Render a NetApp ONTAP backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True  # cluster supported
+
+    def context(self) -> dict:
+        """Return context for NetApp ONTAP backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "iscsi").lower()
+
+        driver_classes = {
+            "iscsi": (
+                "cinder.volume.drivers.netapp.dataontap.iscsi_cmode"
+                ".NetAppCmodeISCSIDriver"
+            ),
+            "nvme": (
+                "cinder.volume.drivers.netapp.dataontap.nvme_cmode"
+                ".NetAppCmodeNVMeDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["iscsi"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class NexentaBackendContext(BaseBackendContext):
+    """Render a Nexenta iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Nexenta iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver"
+        )
+        return context
+
+
+class NimbleBackendContext(BaseBackendContext):
+    """Render a HPE Nimble Storage backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for HPE Nimble Storage backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "iscsi").lower()
+
+        driver_classes = {
+            "iscsi": "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver",
+            "fc": "cinder.volume.drivers.hpe.nimble.NimbleFCDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["iscsi"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class OpeneBackendContext(BaseBackendContext):
+    """Render a Jovian iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Jovian iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver"
+        )
+        return context
+
+
+class ProphetstorBackendContext(BaseBackendContext):
+    """Render a DPL FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for DPL FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.prophetstor.dpl_fc.DPLFCDriver",
+            "iscsi": "cinder.volume.drivers.prophetstor.dpl_iscsi.DPLISCSIDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class QnapBackendContext(BaseBackendContext):
+    """Render a QNAP Storage backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for QNAP Storage backend."""
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.qnap.QnapISCSIDriver"
+        return context
+
+
+class SandstoneBackendContext(BaseBackendContext):
+    """Render a Sds iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Sds iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.sandstone.sds_driver.SdsISCSIDriver"
+        )
+        return context
+
+
+class StxBackendContext(BaseBackendContext):
+    """Render a Stx backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Stx backend."""
+        context = dict(super().context())
+        context["volume_driver"] = "cinder.volume.drivers.stx.iscsi.STXISCSIDriver"
+        return context
+
+
+class SynologyBackendContext(BaseBackendContext):
+    """Render a Syno iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Syno iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.synology.synology_iscsi.SynoISCSIDriver"
+        )
+        return context
+
+
+class Toyouacs5000BackendContext(BaseBackendContext):
+    """Render a Acs5000 FC backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Acs5000 FC backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": ("cinder.volume.drivers.toyou.acs5000.acs5000_fc.Acs5000FCDriver"),
+            "iscsi": (
+                "cinder.volume.drivers.toyou.acs5000.acs5000_iscsi.Acs5000ISCSIDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class VeritasaccessBackendContext(BaseBackendContext):
+    """Render a ACCESSIscsi backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for ACCESSIscsi backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.veritas_access.veritas_iscsi.ACCESSIscsiDriver"
+        )
+        return context
+
+
+class YadroBackendContext(BaseBackendContext):
+    """Render a Tatlin FCVolume backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True  # cluster supported
+
+    def context(self) -> dict:
+        """Return context for Tatlin FCVolume backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.yadro.tatlin_fc.TatlinFCVolumeDriver",
+            "iscsi": "cinder.volume.drivers.yadro.tatlin_iscsi.TatlinISCSIVolumeDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class ZadaraBackendContext(BaseBackendContext):
+    """Render a ZadaraVPSA iSCSI backend stanza."""
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for ZadaraVPSA iSCSI backend."""
+        context = dict(super().context())
+        context["volume_driver"] = (
+            "cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver"
+        )
+        return context
+
+
 class CinderBackendContexts(Context):
     """Context provider for all Cinder backends."""
 

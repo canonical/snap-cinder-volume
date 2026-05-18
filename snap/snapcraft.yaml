@@ -1,13 +1,14 @@
 name: cinder-volume
-base: core24
-version: "2024.1"
+base: core26
+build-base: devel
+version: "2026.1"
 summary: cinder-volume in a snap
 description: |
   This snap is a base snap for cinder-volume. It intended to be used
   directly for supported plugins, but can be used a base for other snaps
   that need to include cinder-volume.
 
-grade: stable
+grade: devel
 confinement: strict
 
 assumes:
@@ -109,6 +110,9 @@ parts:
       uv export --frozen --no-hashes --format=requirements-txt -o requirements.txt
       craftctl default
       cinder-snap-helpers write-hooks
+      # purge external symlinks created by uv venv
+      rm -f "$CRAFT_PART_INSTALL/bin/python"
+      rm -f "$CRAFT_PART_INSTALL/bin/python3.14"
 
   bin:
     source: bin/
