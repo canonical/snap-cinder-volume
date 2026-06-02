@@ -303,6 +303,33 @@ class DellxtremioBackendContext(BaseBackendContext):
         return context
 
 
+class DellunityBackendContext(BaseBackendContext):
+    """Render a Dell Unity backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Dell Unity backend."""
+        context = dict(super().context())
+
+        # Note that the class doesn't change across the configured protocols
+        unity_driver = "cinder.volume.drivers.dell_emc.unity.driver.UnityDriver"
+        context.update(
+            {
+                "volume_driver": unity_driver,
+                "storage_protocol": self.backend_config.get(
+                    "protocol", "iscsi"
+                ).lower(),
+            }
+        )
+        return context
+
+
 class FujitsueternusdxBackendContext(BaseBackendContext):
     """Render a FJDX FC backend stanza."""
 
@@ -351,6 +378,32 @@ class HpexpBackendContext(BaseBackendContext):
         driver_classes = {
             "fc": "cinder.volume.drivers.hpe.xp.hpe_xp_fc.HPEXPFCDriver",
             "iscsi": "cinder.volume.drivers.hpe.xp.hpe_xp_iscsi.HPEXPISCSIDriver",
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["fc"])
+        context.update({"volume_driver": driver_class})
+        return context
+
+
+class HuaweidoradoBackendContext(BaseBackendContext):
+    """Render a Huawei OceanStor Dorado backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = False  # cluster not supported
+
+    def context(self) -> dict:
+        """Return context for Huawei OceanStor Dorado backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "fc").lower()
+
+        driver_classes = {
+            "fc": "cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver",
+            "iscsi": "cinder.volume.drivers.huawei.huawei_driver.HuaweiISCSIDriver",
+            "nvme": "cinder.volume.drivers.huawei.huawei_driver.HuaweiNVMeDriver",
         }
 
         driver_class = driver_classes.get(protocol, driver_classes["fc"])
