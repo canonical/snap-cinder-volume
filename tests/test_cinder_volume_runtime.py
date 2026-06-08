@@ -125,7 +125,7 @@ class TestGenericCinderVolume:
         barbican_section = _get_section(rendered, "barbican")
         glance_section = _get_section(rendered, "glance")
         assert "interface = internal" in nova_section
-        assert "interface = internal" in barbican_section
+        assert "barbican_endpoint_type = internal" in barbican_section
         assert "glance_catalog_info = image:glance:internalURL" in default_section
         assert "valid_interfaces = internal" not in rendered
         assert "service_type = image" not in rendered
@@ -135,8 +135,9 @@ class TestGenericCinderVolume:
         assert "region_name = RegionOne" in glance_section
         cafile = "cafile = /var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
         assert cafile in nova_section
-        assert cafile in barbican_section
         assert cafile in glance_section
+        cafile = "verify_ssl_path = /var/snap/cinder-volume/common/etc/ssl/certs/receive-ca-bundle.pem"
+        assert cafile in barbican_section
         assert "enabled_backends = ceph\ncafile =" not in rendered
 
     def test_cinder_conf_skips_ca_settings_when_ca_bundle_missing(self):
@@ -214,7 +215,7 @@ class TestGenericCinderVolume:
         barbican_section = _get_section(rendered, "barbican")
         glance_section = _get_section(rendered, "glance")
         assert "interface = internal" in nova_section
-        assert "interface = internal" in barbican_section
+        assert "barbican_endpoint_type = internal" in barbican_section
         assert "glance_catalog_info = image:glance:internalURL" in default_section
         assert "valid_interfaces = internal" not in rendered
         assert "service_type = image" not in rendered
@@ -223,7 +224,7 @@ class TestGenericCinderVolume:
         assert "region_name = RegionOne" in barbican_section
         assert "region_name = RegionOne" in glance_section
         assert "cafile =" not in nova_section
-        assert "cafile =" not in barbican_section
+        assert "verify_ssl_path =" not in barbican_section
         assert "cafile =" not in glance_section
 
     def test_cinder_conf_renders_cluster_when_supported_and_set(self):
