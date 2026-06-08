@@ -36,12 +36,12 @@ cafile = {{ snap_paths.common }}/etc/ssl/certs/receive-ca-bundle.pem
 {% endif %}
 
 [barbican]
-interface = internal
+barbican_endpoint_type = internal
 {% if cinder.region_name %}
 region_name = {{ cinder.region_name }}
 {% endif %}
 {% if ca and ca.bundle %}
-cafile = {{ snap_paths.common }}/etc/ssl/certs/receive-ca-bundle.pem
+verify_ssl_path = {{ snap_paths.common }}/etc/ssl/certs/receive-ca-bundle.pem
 {% endif %}
 
 [glance]
