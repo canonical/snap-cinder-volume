@@ -813,6 +813,27 @@ class ZadaraConfiguration(BaseBackendConfiguration):
     zadara_access_key: str  # VPSA access key
 
 
+class DellpowerflexConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell PowerFlex** Cinder driver.
+
+    This configuration supports SDC and NVMe-TCP protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow extra fields not defined in the model
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # Dell PowerFlex Manager IP/FQDN
+    san_login: str  # Dell PowerFlex Manager username
+    san_password: str  # Dell PowerFlex Manager password
+    protocol: str = Field(default="scaleio", pattern="^(scaleio|nvme-tcp)$")
+
+
 class Configuration(BaseConfiguration):
     """Holding additional configuration for the generic snap.
 
@@ -824,6 +845,7 @@ class Configuration(BaseConfiguration):
     hitachi: dict[str, HitachiConfiguration] = {}
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
+    dellpowerflex: dict[str, DellpowerflexConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
     infinidat: dict[str, InfinidatConfiguration] = {}
@@ -840,6 +862,8 @@ class Configuration(BaseConfiguration):
             ("hitachi", self.hitachi),
             ("pure", self.pure),
             ("dellsc", self.dellsc),
+            ("dellpowerflex", self.dellpowerflex),
+            ("dellpowerstore", self.dellpowerstore),
             ("hpethreepar", self.hpethreepar),
             ("infinidat", self.infinidat),
         ]:
