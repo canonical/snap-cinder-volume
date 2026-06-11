@@ -1140,3 +1140,33 @@ class InfinidatBackendContext(BaseBackendContext):
             }
         )
         return context
+
+
+class DellpowerflexBackendContext(BaseBackendContext):
+    """Render a Dell PowerFlex backend stanza."""
+
+    _hidden_keys = ("protocol",)
+
+    def __init__(self, backend_name: str, backend_config: dict):
+        """Initialize with backend name and config."""
+        super().__init__(backend_name, backend_config)
+        self.supports_cluster = True  # cluster supported
+
+    def context(self) -> dict:
+        """Return context for Dell PowerFlex backend."""
+        context = dict(super().context())
+        protocol = self.backend_config.get("protocol", "scaleio").lower()
+
+        driver_classes = {
+            "scaleio": (
+                "cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver"
+            ),
+            "nvme-tcp": (
+                "cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexNVMeDriver"
+            ),
+        }
+
+        driver_class = driver_classes.get(protocol, driver_classes["scaleio"])
+        context.update({"volume_driver": driver_class})
+        return context
+
