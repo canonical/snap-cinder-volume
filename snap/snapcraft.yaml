@@ -1,6 +1,7 @@
 name: cinder-volume
 base: core24
 version: "2024.1"
+adopt-info: snap-version
 summary: cinder-volume in a snap
 description: |
   This snap is a base snap for cinder-volume. It intended to be used
@@ -54,6 +55,21 @@ apps:
       - dm-multipath
 
 parts:
+  snap-version:
+    plugin: nil
+    build-packages:
+      - git
+    override-build: |
+      set -eu
+      craftctl default
+      gitref="$(git -C "$CRAFT_PROJECT_DIR" rev-parse --short=8 HEAD)"
+      version="$(craftctl get version)-${gitref}"
+      git -C "$CRAFT_PROJECT_DIR" update-index -q --refresh
+      if ! git -C "$CRAFT_PROJECT_DIR" diff-index --quiet HEAD --; then
+        version="${version}+dirty"
+      fi
+      craftctl set version="${version}"
+
   openstack:
     plugin: nil
     stage-packages:
