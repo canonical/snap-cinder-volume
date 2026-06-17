@@ -1,6 +1,5 @@
 name: cinder-volume
 base: core26
-build-base: devel
 version: "2026.1"
 summary: cinder-volume in a snap
 description: |
@@ -8,7 +7,7 @@ description: |
   directly for supported plugins, but can be used a base for other snaps
   that need to include cinder-volume.
 
-grade: devel
+grade: stable
 confinement: strict
 
 assumes:
