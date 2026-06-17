@@ -355,6 +355,27 @@ class DellxtremioConfiguration(BaseBackendConfiguration):
     enable_unsupported_driver: typing.Literal[True]
 
 
+class DellunityConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Dell Unity** Cinder driver.
+
+    This configuration supports iSCSI and Fibre Channel protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_ip: pydantic.IPvAnyAddress  # Dell Unity management IP/FQDN
+    san_login: str  # Dell Unity management username
+    san_password: str  # Dell Unity management password
+    protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+
+
 class FujitsueternusdxConfiguration(BaseBackendConfiguration):
     """All options recognised by the **FJDX FC** Cinder driver."""
 
@@ -384,6 +405,28 @@ class HpexpConfiguration(BaseBackendConfiguration):
 
     # Core required fields
     protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+
+class HuaweidoradoConfiguration(BaseBackendConfiguration):
+    """All options recognised by the **Huawei OceanStor Dorado** Cinder driver.
+
+    This configuration supports FC, iSCSI, and NVMe protocols.
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",  # Allow driver-specific fields not listed here
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=to_kebab,
+            serialization_alias=pydantic.alias_generators.to_snake,
+        ),
+    )
+
+    # Core required fields
+    san_address: str  # Management IP(s) of the Huawei storage array (comma-separated)
+    san_user: str  # Huawei storage management username
+    san_password: str  # Huawei storage management password
+    storage_pool: str  # Storage pool name(s) on the array
+    protocol: str = Field(default="fc", pattern="^(fc|iscsi|nvme)$")
 
 
 class IbmflashsystemcommonConfiguration(BaseBackendConfiguration):
@@ -825,7 +868,9 @@ class Configuration(BaseConfiguration):
     pure: dict[str, PureConfiguration] = {}
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
+    dellunity: dict[str, DellunityConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
+    huaweidorado: dict[str, HuaweidoradoConfiguration] = {}
     infinidat: dict[str, InfinidatConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
@@ -840,7 +885,9 @@ class Configuration(BaseConfiguration):
             ("hitachi", self.hitachi),
             ("pure", self.pure),
             ("dellsc", self.dellsc),
+            ("dellunity", self.dellunity),
             ("hpethreepar", self.hpethreepar),
+            ("huaweidorado", self.huaweidorado),
             ("infinidat", self.infinidat),
         ]:
             for backend_key, backend in backends.items():
