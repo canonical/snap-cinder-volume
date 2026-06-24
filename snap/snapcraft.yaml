@@ -110,8 +110,30 @@ parts:
     source: .
     build-packages:
       - git
+      # Toolchain for dependencies built from sdist on architectures without
+      # published wheels (e.g. s390x): bcrypt and cryptography need Rust;
+      # pynacl and logbook need a C compiler.
+      - build-essential
+      - cargo
+      - rustc
+      # cryptography's Rust openssl-sys crate links system OpenSSL via pkg-config.
+      - pkg-config
+      - libssl-dev
     stage-packages:
       - python3-venv
+      # Python headers (Python.h) must live in the staged Python tree, because
+      # uv builds the venv from this part's staged interpreter. Needed for the
+      # above source builds.
+      - libpython3-dev
+    build-environment:
+      # bcrypt 4.3.0 pins an old PyO3 (0.23.5) that refuses to build against
+      # the newer Python 3.14 interpreter. Build against the stable abi3 with
+      # forward compatibility (bcrypt ships abi3 wheels, so this is correct).
+      - PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+      # logbook 1.9.2's optional Rust speedup does not compile against the
+      # pyo3 version resolved here; build it pure-Python (only needed on
+      # architectures without wheels, e.g. s390x).
+      - DISABLE_LOGBOOK_CEXT: "1"
     override-build: |
       craftctl default
       cinder-snap-helpers write-hooks
