@@ -118,6 +118,7 @@ parts:
       - rustc
       # cryptography's Rust openssl-sys crate links system OpenSSL via pkg-config.
       - pkg-config
+      - libffi-dev
       - libssl-dev
     stage-packages:
       - python3-venv
