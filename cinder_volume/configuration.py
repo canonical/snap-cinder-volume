@@ -57,6 +57,30 @@ class CinderConfiguration(ParentConfig):
     cluster: str | None = None
 
 
+class IdentityConfiguration(ParentConfig):
+    """Keystone credentials for cinder to authenticate to other services."""
+
+    auth_url: str | None = None
+    username: str | None = None
+    password: str | None = None
+    project_name: str | None = None
+    user_domain_name: str | None = None
+    project_domain_name: str | None = None
+
+    @model_validator(mode="after")
+    def _all_or_none(self) -> "IdentityConfiguration":
+        """Require the credentials to be set together."""
+        values = self.model_dump()
+        set_keys = [k for k, v in values.items() if v is not None]
+        if set_keys and len(set_keys) != len(values):
+            missing = sorted(set(values) - set(set_keys))
+            raise ValueError(
+                "identity credentials must be set together; missing: "
+                + ", ".join(missing)
+            )
+        return self
+
+
 class Settings(ParentConfig):
     """General settings for the snap."""
 
@@ -90,6 +114,7 @@ class BaseConfiguration(ParentConfig):
 
     settings: Settings = Settings()
     ca: CAConfiguration = CAConfiguration()
+    identity: IdentityConfiguration = IdentityConfiguration()
     database: DatabaseConfiguration
     rabbitmq: RabbitMQConfiguration
     cinder: CinderConfiguration
