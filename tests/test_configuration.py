@@ -83,6 +83,50 @@ class TestRabbitMQConfiguration:
         assert data["url"] == "amqp://localhost"
 
 
+class TestIdentityConfiguration:
+    """Test the IdentityConfiguration class."""
+
+    def test_identity_config_creation(self):
+        """Test creating an IdentityConfiguration instance."""
+        config = configuration.IdentityConfiguration(
+            **{
+                "auth-url": "http://keystone.internal/openstack-keystone/v3",
+                "username": "cinder-volume",
+                "password": "secret",
+                "project-name": "services",
+                "user-domain-name": "service_domain",
+                "project-domain-name": "service_domain",
+            }
+        )
+        assert config.auth_url == "http://keystone.internal/openstack-keystone/v3"
+        assert config.username == "cinder-volume"
+        assert config.password == "secret"
+        assert config.project_name == "services"
+        assert config.user_domain_name == "service_domain"
+        assert config.project_domain_name == "service_domain"
+
+    def test_identity_config_rejects_partial_credentials(self):
+        """Setting only some identity fields must fail validation."""
+        with pytest.raises(pydantic.ValidationError):
+            configuration.IdentityConfiguration(
+                **{
+                    "auth-url": "http://keystone.internal/openstack-keystone/v3",
+                    "username": "cinder-volume",
+                    "password": "secret",
+                }
+            )
+
+    def test_identity_config_defaults_to_none(self):
+        """All identity fields are optional."""
+        config = configuration.IdentityConfiguration()
+        assert config.auth_url is None
+        assert config.username is None
+        assert config.password is None
+        assert config.project_name is None
+        assert config.user_domain_name is None
+        assert config.project_domain_name is None
+
+
 class TestCinderConfiguration:
     """Test the CinderConfiguration class."""
 

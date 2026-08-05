@@ -140,6 +140,95 @@ class TestGenericCinderVolume:
         assert cafile in barbican_section
         assert "enabled_backends = ceph\ncafile =" not in rendered
 
+    def test_cinder_conf_renders_nova_auth_when_identity_set(self):
+        """The [nova] section should carry auth options when identity is set."""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                Path(cinder_volume.__file__).parent / "templates"
+            )
+        )
+
+        rendered = env.get_template("cinder.conf.j2").render(
+            snap_paths={"common": "/var/snap/cinder-volume/common"},
+            settings={"debug": False, "enable_telemetry_notifications": False},
+            rabbitmq={"url": "amqp://guest:guest@localhost:5672/"},
+            database={"url": "mysql://cinder:secret@db/cinder"},
+            cinder={
+                "project_id": "project-id",
+                "user_id": "user-id",
+                "region_name": "RegionOne",
+                "cluster": None,
+                "cluster_ok": True,
+                "default_volume_type": None,
+                "image_volume_cache_enabled": False,
+                "image_volume_cache_max_size_gb": 0,
+                "image_volume_cache_max_count": 0,
+            },
+            identity={
+                "auth_url": "http://keystone.internal/openstack-keystone/v3",
+                "username": "cinder-volume",
+                "password": "secret",
+                "project_name": "services",
+                "user_domain_name": "service_domain",
+                "project_domain_name": "service_domain",
+            },
+            ca={"bundle": None},
+            cinder_backends={"enabled_backends": "ceph", "cluster_ok": True},
+        )
+
+        nova_section = _get_section(rendered, "nova")
+        assert "interface = internal" in nova_section
+        assert "auth_type = password" in nova_section
+        assert (
+            "auth_url = http://keystone.internal/openstack-keystone/v3" in nova_section
+        )
+        assert "username = cinder-volume" in nova_section
+        assert "password = secret" in nova_section
+        assert "project_name = services" in nova_section
+        assert "user_domain_name = service_domain" in nova_section
+        assert "project_domain_name = service_domain" in nova_section
+
+    def test_cinder_conf_skips_nova_auth_when_identity_unset(self):
+        """The [nova] section should have no auth options without identity."""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                Path(cinder_volume.__file__).parent / "templates"
+            )
+        )
+
+        rendered = env.get_template("cinder.conf.j2").render(
+            snap_paths={"common": "/var/snap/cinder-volume/common"},
+            settings={"debug": False, "enable_telemetry_notifications": False},
+            rabbitmq={"url": "amqp://guest:guest@localhost:5672/"},
+            database={"url": "mysql://cinder:secret@db/cinder"},
+            cinder={
+                "project_id": "project-id",
+                "user_id": "user-id",
+                "region_name": "RegionOne",
+                "cluster": None,
+                "cluster_ok": True,
+                "default_volume_type": None,
+                "image_volume_cache_enabled": False,
+                "image_volume_cache_max_size_gb": 0,
+                "image_volume_cache_max_count": 0,
+            },
+            identity={
+                "auth_url": None,
+                "username": None,
+                "password": None,
+                "project_name": None,
+                "user_domain_name": None,
+                "project_domain_name": None,
+            },
+            ca={"bundle": None},
+            cinder_backends={"enabled_backends": "ceph", "cluster_ok": True},
+        )
+
+        nova_section = _get_section(rendered, "nova")
+        assert "interface = internal" in nova_section
+        assert "auth_type" not in nova_section
+        assert "auth_url" not in nova_section
+
     def test_cinder_conf_skips_ca_settings_when_ca_bundle_missing(self):
         """The template should omit CA settings but keep sections when no CA bundle."""
         env = jinja2.Environment(
