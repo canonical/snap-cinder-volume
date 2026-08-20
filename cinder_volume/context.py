@@ -9,6 +9,7 @@ import pathlib
 import typing
 
 import jinja2
+import pydantic
 from snaphelpers import Snap
 
 from . import error, template
@@ -55,6 +56,23 @@ class SnapPathContext(Context):
 
 
 ETC_CINDER_D_CONF_DIR = pathlib.Path("etc/cinder/cinder.conf.d")
+
+
+class BackendTLSMaterial(typing.NamedTuple):
+    """Describe one backend TLS material file managed by the snap."""
+
+    content_option: str
+    path_option: str
+    filename: str
+    dest: pathlib.Path
+    mode: int
+    verify_option: str | None = None
+    cleanup: bool = False
+
+    def output_path(self) -> pathlib.Path:
+        """Return the material path relative to its snap location."""
+        return self.dest / self.filename
+
 
 CINDER_CTX_KEY = "ctx_cinder_name"
 BACKEND_CTX_KEY = "ctx_backend"
@@ -104,7 +122,18 @@ def ca_bundle_set(config: template.ContextType) -> bool:
 class BaseBackendContext(Context):
     """Base class for backend context providers."""
 
-    _hidden_keys: typing.Sequence[str] = ("driver_ssl_cert",)
+    _hidden_keys: typing.Sequence[str] = ()
+    supports_driver_ssl_cert = True
+    _tls_materials: typing.Sequence[BackendTLSMaterial] = (
+        BackendTLSMaterial(
+            content_option="driver_ssl_cert",
+            path_option="driver_ssl_cert_path",
+            filename="{backend_name}.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            verify_option="driver_ssl_cert_verify",
+        ),
+    )
 
     def __init__(self, backend_name: str, backend_config: dict[str, typing.Any]):
         """Initialize with backend name and config."""
@@ -120,21 +149,46 @@ class BaseBackendContext(Context):
         necessarily associated with `backend_name`.
         """
         context = dict(self.backend_config)
-        if context.get("driver_ssl_cert"):
-            context["driver_ssl_cert_path"] = str(
-                pathlib.Path(r"{{ snap_paths.common }}")
-                / ETC_CINDER_D_CONF_DIR
-                / f"{self.backend_name}.pem"
+        for material in self.tls_materials:
+            value = context.get(material.content_option)
+            if isinstance(value, pydantic.SecretStr):
+                value = value.get_secret_value()
+            if material.content_option != material.path_option:
+                context.pop(material.content_option, None)
+            if not value:
+                if material.content_option == material.path_option:
+                    context[material.path_option] = None
+                continue
+            context[material.path_option] = str(
+                pathlib.Path(r"{{ snap_paths.common }}") / material.output_path()
             )
-            context["driver_ssl_cert_verify"] = True
+            if material.verify_option:
+                context[material.verify_option] = True
         return context
+
+    @property
+    def tls_materials(self) -> collections.abc.Generator[BackendTLSMaterial]:
+        """TLS material descriptors registered for this backend."""
+        if not self.supports_driver_ssl_cert:
+            return
+        for klass in reversed(self.__class__.mro()):
+            if issubclass(klass, BaseBackendContext):
+                for material in klass.__dict__.get("_tls_materials", ()):
+                    yield material._replace(
+                        filename=material.filename.format(
+                            backend_name=self.backend_name
+                        )
+                    )
 
     @property
     def hidden_keys(self) -> collections.abc.Generator[str]:
         """Keys that should not be exposed in cinder context."""
         for klass in self.__class__.mro():
             if issubclass(klass, BaseBackendContext):
-                yield from klass._hidden_keys
+                yield from klass.__dict__.get("_hidden_keys", ())
+        for material in self.tls_materials:
+            if material.content_option != material.path_option:
+                yield material.content_option
 
     def cinder_context(self) -> typing.Mapping[str, typing.Any]:
         """Context specific for cinder configuration.
@@ -155,17 +209,6 @@ class BaseBackendContext(Context):
                 ETC_CINDER_D_CONF_DIR,
                 template_name="backend.conf.j2",
             ),
-            template.CommonTemplate(
-                f"{self.backend_name}.pem",
-                ETC_CINDER_D_CONF_DIR,
-                template_name="backend.pem.j2",
-                conditionals=[
-                    backend_variable_set(
-                        self.backend_name,
-                        "driver_ssl_cert_path",
-                    )
-                ],
-            ),
         ]
 
     def directories(self) -> list[template.Directory]:
@@ -177,8 +220,22 @@ class BaseBackendContext(Context):
         pass
 
 
+def backend_tls_material_cleanup_paths() -> collections.abc.Generator[pathlib.Path]:
+    """Return relative paths for TLS material owned by backend cleanup."""
+    backend_classes = [BaseBackendContext]
+    while backend_classes:
+        backend_class = backend_classes.pop()
+        backend_classes.extend(backend_class.__subclasses__())
+        for material in backend_class.__dict__.get("_tls_materials", ()):
+            if material.cleanup:
+                yield material.dest / material.filename.format(backend_name="*")
+
+
 class SolidfireBackendContext(BaseBackendContext):
     """Render a NetApp SolidFire backend stanza."""
+
+    _hidden_keys = ("driver_ssl_cert",)
+    supports_driver_ssl_cert = False
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -642,6 +699,40 @@ class NetappBackendContext(BaseBackendContext):
     """Render a NetApp ONTAP backend stanza."""
 
     _hidden_keys = ("protocol",)
+    _tls_materials = (
+        BackendTLSMaterial(
+            content_option="netapp_ssl_cert_path",
+            path_option="netapp_ssl_cert_path",
+            filename="{backend_name}-netapp-ssl-cert.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            cleanup=True,
+        ),
+        BackendTLSMaterial(
+            content_option="netapp_private_key_file",
+            path_option="netapp_private_key_file",
+            filename="{backend_name}-netapp-private-key.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o600,
+            cleanup=True,
+        ),
+        BackendTLSMaterial(
+            content_option="netapp_certificate_file",
+            path_option="netapp_certificate_file",
+            filename="{backend_name}-netapp-certificate.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            cleanup=True,
+        ),
+        BackendTLSMaterial(
+            content_option="netapp_ca_certificate_file",
+            path_option="netapp_ca_certificate_file",
+            filename="{backend_name}-netapp-ca-certificate.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            cleanup=True,
+        ),
+    )
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -690,6 +781,16 @@ class NimbleBackendContext(BaseBackendContext):
     """Render a HPE Nimble Storage backend stanza."""
 
     _hidden_keys = ("protocol",)
+    _tls_materials = (
+        BackendTLSMaterial(
+            content_option="nimble_verify_cert_path",
+            path_option="nimble_verify_cert_path",
+            filename="{backend_name}-nimble-verify-cert.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            cleanup=True,
+        ),
+    )
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -755,6 +856,9 @@ class ProphetstorBackendContext(BaseBackendContext):
 
 class QnapBackendContext(BaseBackendContext):
     """Render a QNAP Storage backend stanza."""
+
+    _hidden_keys = ("driver_ssl_cert",)
+    supports_driver_ssl_cert = False
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -992,7 +1096,17 @@ class CephBackendContext(BaseBackendContext):
 class HitachiBackendContext(BaseBackendContext):
     """Render a Hitachi VSP backend stanza."""
 
-    _hidden_keys = ("protocol", "hitachi_mirror_driver_ssl_cert")
+    _hidden_keys = ("protocol",)
+    _tls_materials = (
+        BackendTLSMaterial(
+            content_option="hitachi_mirror_ssl_cert",
+            path_option="hitachi_mirror_ssl_cert_path",
+            filename="{backend_name}_mirror.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            verify_option="hitachi_mirror_ssl_cert_verify",
+        ),
+    )
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -1017,32 +1131,7 @@ class HitachiBackendContext(BaseBackendContext):
             context["use_chap_auth"] = True
         if "hitachi_mirror_auth_username" in context:
             context["hitachi_mirror_use_chap_auth"] = True
-        if context.get("hitachi_mirror_driver_ssl_cert"):
-            context["hitachi_mirror_ssl_cert_path"] = str(
-                pathlib.Path(r"{{ snap_paths.common }}")
-                / ETC_CINDER_D_CONF_DIR
-                / f"{self.backend_name}_mirror.pem"
-            )
-            context["hitachi_mirror_ssl_cert_verify"] = True
         return context
-
-    def template_files(self) -> list[template.Template]:
-        """Files to be templated."""
-        return super().template_files() + [
-            template.CommonTemplate(
-                f"{self.backend_name}_mirror.pem",
-                ETC_CINDER_D_CONF_DIR,
-                # TODO: find a better pattern when multiple backends
-                # also need a second certificate for the driver
-                template_name="hitachi_backend.pem.j2",
-                conditionals=[
-                    backend_variable_set(
-                        self.backend_name,
-                        "hitachi_mirror_ssl_cert_path",
-                    )
-                ],
-            ),
-        ]
 
 
 class PureBackendContext(BaseBackendContext):
@@ -1142,7 +1231,8 @@ class DellpowerstoreBackendContext(BaseBackendContext):
 class HpethreeparBackendContext(BaseBackendContext):
     """Render a HPE 3Par backend stanza."""
 
-    _hidden_keys = ("protocol",)
+    _hidden_keys = ("protocol", "driver_ssl_cert")
+    supports_driver_ssl_cert = False
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -1170,7 +1260,8 @@ class HpethreeparBackendContext(BaseBackendContext):
 class InfinidatBackendContext(BaseBackendContext):
     """Render an Infinidat InfiniBox backend stanza."""
 
-    _hidden_keys = ("protocol",)
+    _hidden_keys = ("protocol", "driver_ssl_cert")
+    supports_driver_ssl_cert = False
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
