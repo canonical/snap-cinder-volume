@@ -35,6 +35,85 @@ class TestParentConfig:
         assert hasattr(config, "model_config")
 
 
+@pytest.mark.parametrize(
+    ("config_type", "backend_config", "field", "material"),
+    [
+        (
+            configuration.BaseBackendConfiguration,
+            {
+                "volume-backend-name": "generic01",
+                "driver-ssl-cert": "GENERIC_PEM",
+            },
+            "driver_ssl_cert",
+            "GENERIC_PEM",
+        ),
+        (
+            configuration.HitachiConfiguration,
+            {
+                "volume-backend-name": "hitachi01",
+                "san-ip": "10.0.0.1",
+                "san-login": "user",
+                "san-password": "password",
+                "hitachi-storage-id": "storage",
+                "hitachi-pools": "pool",
+                "hitachi-mirror-ssl-cert": "MIRROR_PEM",
+            },
+            "hitachi_mirror_ssl_cert",
+            "MIRROR_PEM",
+        ),
+        (
+            configuration.NimbleConfiguration,
+            {
+                "volume-backend-name": "nimble01",
+                "san-ip": "10.0.0.1",
+                "san-login": "user",
+                "san-password": "password",
+                "nimble-verify-cert-path": "NIMBLE_CA",
+            },
+            "nimble_verify_cert_path",
+            "NIMBLE_CA",
+        ),
+    ],
+)
+def test_backend_tls_material_is_masked(config_type, backend_config, field, material):
+    """Raw backend TLS values should be secret-aware model fields."""
+    config = config_type(**backend_config)
+
+    value = config.model_dump()[field]
+    assert isinstance(value, pydantic.SecretStr)
+    assert material not in repr(config)
+
+
+def test_validation_error_hides_tls_material_input():
+    """Validation errors should not include rejected TLS material input."""
+    material = "RAW_TLS_MATERIAL_MUST_NOT_APPEAR"
+
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        configuration.BaseBackendConfiguration(
+            **{
+                "volume-backend-name": "generic01",
+                "driver-ssl-cert": {"content": material},
+            }
+        )
+
+    assert material not in str(exc_info.value)
+
+
+def test_audited_backends_are_registered_at_runtime():
+    """Advertised backends with audited options must be discoverable."""
+    assert {
+        "dellpowervault",
+        "fujitsueternusdx",
+        "ibmgpfs",
+        "nimble",
+        "qnap",
+        "solidfire",
+        "stx",
+        "synology",
+        "zadara",
+    } <= set(configuration.Configuration.model_fields)
+
+
 class TestCAConfiguration:
     """Test the CAConfiguration class."""
 
@@ -1726,16 +1805,56 @@ class TestNetappConfiguration:
         )
         assert config.volume_backend_name == "netapp01"
 
-    def test_netapp_requires_netapp_ca_certificate_file(self):
-        """Test netapp-ca-certificate-file is required."""
-        kwargs = {
-            "volume-backend-name": "netapp01",
-            "netapp-ca-certificate-file": "secret",
-            "protocol": "iscsi",
-        }
-        del kwargs["netapp-ca-certificate-file"]
-        with pytest.raises(pydantic.ValidationError):
-            configuration.NetappConfiguration(**kwargs)
+    def test_netapp_accepts_tls_material_content(self):
+        """Test all NetApp TLS material fields accept content."""
+        assert {
+            "netapp_ssl_cert_path",
+            "netapp_private_key_file",
+            "netapp_certificate_file",
+            "netapp_ca_certificate_file",
+            "netapp_certificate_host_validation",
+        } <= configuration.NetappConfiguration.model_fields.keys()
+        config = configuration.NetappConfiguration(
+            **{
+                "volume-backend-name": "netapp01",
+                "netapp-ssl-cert-path": "TRANSPORT_CA",
+                "netapp-private-key-file": "PRIVATE_KEY",
+                "netapp-certificate-file": "CLIENT_CERT",
+                "netapp-ca-certificate-file": "CLIENT_CA",
+                "netapp-certificate-host-validation": False,
+                "protocol": "iscsi",
+            }
+        )
+
+        data = config.model_dump()
+        assert data["netapp_ssl_cert_path"].get_secret_value() == "TRANSPORT_CA"
+        assert data["netapp_private_key_file"].get_secret_value() == "PRIVATE_KEY"
+        assert data["netapp_certificate_file"].get_secret_value() == "CLIENT_CERT"
+        assert data["netapp_ca_certificate_file"].get_secret_value() == "CLIENT_CA"
+        assert data["netapp_certificate_host_validation"] is False
+
+    def test_netapp_tls_material_is_masked(self):
+        """Test TLS material is not exposed in model representations."""
+        config = configuration.NetappConfiguration(
+            **{
+                "volume-backend-name": "netapp01",
+                "netapp-private-key-file": "PRIVATE_KEY_CONTENT",
+                "protocol": "iscsi",
+            }
+        )
+
+        assert "PRIVATE_KEY_CONTENT" not in repr(config)
+
+    def test_netapp_tls_material_is_optional(self):
+        """Test a NetApp backend can omit all TLS material."""
+        config = configuration.NetappConfiguration(
+            **{"volume-backend-name": "netapp01", "protocol": "iscsi"}
+        )
+
+        assert config.netapp_ssl_cert_path is None
+        assert config.netapp_private_key_file is None
+        assert config.netapp_certificate_file is None
+        assert config.netapp_ca_certificate_file is None
 
     def test_netapp_rejects_invalid_protocol(self):
         """Test that an invalid protocol value is rejected."""
