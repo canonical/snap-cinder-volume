@@ -3,7 +3,7 @@
 
 from unittest.mock import Mock
 
-from cinder_volume import context
+from cinder_volume import configuration, context
 
 
 class TestConfigContext:
@@ -702,6 +702,75 @@ class TestNetappBackendContext:
         )
         result = ctx.cinder_context()
         assert "protocol" not in result
+
+    def test_netapp_tls_material_is_replaced_with_paths(self):
+        """Test Cinder receives paths without raw NetApp TLS material."""
+        backend_config = configuration.NetappConfiguration(
+            **{
+                "volume-backend-name": "mybackend",
+                "netapp-ssl-cert-path": "TRANSPORT_CA_CONTENT",
+                "netapp-private-key-file": "PRIVATE_KEY_CONTENT",
+                "netapp-certificate-file": "CLIENT_CERT_CONTENT",
+                "netapp-ca-certificate-file": "CLIENT_CA_CONTENT",
+                "netapp-certificate-host-validation": False,
+            }
+        ).model_dump()
+        ctx = context.NetappBackendContext("mybackend", backend_config)
+
+        result = ctx.cinder_context()
+
+        common = "{{ snap_paths.common }}/etc/cinder/cinder.conf.d"
+        assert result["netapp_ssl_cert_path"] == (
+            f"{common}/mybackend-netapp-ssl-cert.pem"
+        )
+        assert result["netapp_private_key_file"] == (
+            f"{common}/mybackend-netapp-private-key.pem"
+        )
+        assert result["netapp_certificate_file"] == (
+            f"{common}/mybackend-netapp-certificate.pem"
+        )
+        assert result["netapp_ca_certificate_file"] == (
+            f"{common}/mybackend-netapp-ca-certificate.pem"
+        )
+        assert result["netapp_certificate_host_validation"] is False
+        for material in (
+            "TRANSPORT_CA_CONTENT",
+            "PRIVATE_KEY_CONTENT",
+            "CLIENT_CERT_CONTENT",
+            "CLIENT_CA_CONTENT",
+        ):
+            assert material not in str(result)
+
+    def test_netapp_tls_material_is_not_added_to_jinja_context(self):
+        """Test raw material is replaced by its path without hidden Jinja keys."""
+        backend_config = configuration.NetappConfiguration(
+            **{
+                "volume-backend-name": "mybackend",
+                "netapp-private-key-file": "PRIVATE_KEY_CONTENT",
+            }
+        ).model_dump()
+        ctx = context.NetappBackendContext("mybackend", backend_config)
+
+        full_context = ctx.context()
+        cinder_context = ctx.cinder_context()
+
+        assert "PRIVATE_KEY_CONTENT" not in str(full_context)
+        assert "_netapp_private_key_file_content" not in full_context
+        assert "_netapp_private_key_file_content" not in cinder_context
+
+    def test_netapp_tls_material_descriptors_have_secure_modes(self):
+        """Test private and public NetApp TLS files use secure modes."""
+        ctx = context.NetappBackendContext("mybackend", {})
+
+        materials = {item.filename: item for item in ctx.tls_materials}
+
+        assert materials["mybackend-netapp-private-key.pem"].mode == 0o600
+        for filename in (
+            "mybackend-netapp-ssl-cert.pem",
+            "mybackend-netapp-certificate.pem",
+            "mybackend-netapp-ca-certificate.pem",
+        ):
+            assert materials[filename].mode == 0o640
 
 
 class TestNexentaBackendContext:

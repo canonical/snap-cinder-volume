@@ -25,6 +25,7 @@ class ParentConfig(pydantic.BaseModel):
     """Set common model configuration for all models."""
 
     model_config = pydantic.ConfigDict(
+        hide_input_in_errors=True,
         alias_generator=pydantic.AliasGenerator(
             validation_alias=to_kebab,
             serialization_alias=to_kebab,
@@ -146,7 +147,7 @@ class BaseBackendConfiguration(ParentConfig):
     image_volume_cache_max_count: int | None = None
     volume_dd_blocksize: int = Field(default=4096, ge=512)
     volume_backend_name: str
-    driver_ssl_cert: str | None = None
+    driver_ssl_cert: pydantic.SecretStr | None = None
 
 
 class CephConfiguration(BaseBackendConfiguration):
@@ -186,6 +187,9 @@ class HitachiConfiguration(BaseBackendConfiguration):
 
     # Driver selection
     protocol: str = Field(default="fc", pattern="^(fc|iscsi)$")
+
+    # TLS material received as content and rendered into a snap-owned file.
+    hitachi_mirror_ssl_cert: pydantic.SecretStr | None = None
 
 
 class PureConfiguration(BaseBackendConfiguration):
@@ -685,8 +689,12 @@ class NetappConfiguration(BaseBackendConfiguration):
         ),
     )
 
-    # Core required fields
-    netapp_ca_certificate_file: str  # Absolute path to the trusted CA certificate file.
+    # TLS material received as content and rendered into snap-owned files.
+    netapp_ssl_cert_path: pydantic.SecretStr | None = None
+    netapp_private_key_file: pydantic.SecretStr | None = None
+    netapp_certificate_file: pydantic.SecretStr | None = None
+    netapp_ca_certificate_file: pydantic.SecretStr | None = None
+    netapp_certificate_host_validation: bool = False
     protocol: str = Field(default="iscsi", pattern="^(iscsi|nvme)$")
 
 
@@ -721,6 +729,8 @@ class NimbleConfiguration(BaseBackendConfiguration):
     san_login: str  # Username for SAN controller
     san_password: str  # Password for SAN controller
     protocol: str = Field(default="iscsi", pattern="^(iscsi|fc)$")
+    nimble_verify_certificate: bool | None = None
+    nimble_verify_cert_path: pydantic.SecretStr | None = None
 
 
 class OpeneConfiguration(BaseBackendConfiguration):
@@ -915,10 +925,20 @@ class Configuration(BaseConfiguration):
     dellsc: dict[str, DellSCConfiguration] = {}
     dellpowerflex: dict[str, DellpowerflexConfiguration] = {}
     dellpowerstore: dict[str, DellpowerstoreConfiguration] = {}
+    dellpowervault: dict[str, DellpowervaultConfiguration] = {}
     dellunity: dict[str, DellunityConfiguration] = {}
+    fujitsueternusdx: dict[str, FujitsueternusdxConfiguration] = {}
     hpethreepar: dict[str, HpethreeparConfiguration] = {}
     huaweidorado: dict[str, HuaweidoradoConfiguration] = {}
+    ibmgpfs: dict[str, IbmgpfsConfiguration] = {}
     infinidat: dict[str, InfinidatConfiguration] = {}
+    netapp: dict[str, NetappConfiguration] = {}
+    nimble: dict[str, NimbleConfiguration] = {}
+    qnap: dict[str, QnapConfiguration] = {}
+    solidfire: dict[str, SolidfireConfiguration] = {}
+    stx: dict[str, StxConfiguration] = {}
+    synology: dict[str, SynologyConfiguration] = {}
+    zadara: dict[str, ZadaraConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
     def validate_unique_backend_names(self):
@@ -934,10 +954,20 @@ class Configuration(BaseConfiguration):
             ("dellsc", self.dellsc),
             ("dellpowerflex", self.dellpowerflex),
             ("dellpowerstore", self.dellpowerstore),
+            ("dellpowervault", self.dellpowervault),
             ("dellunity", self.dellunity),
+            ("fujitsueternusdx", self.fujitsueternusdx),
             ("hpethreepar", self.hpethreepar),
             ("huaweidorado", self.huaweidorado),
+            ("ibmgpfs", self.ibmgpfs),
             ("infinidat", self.infinidat),
+            ("netapp", self.netapp),
+            ("nimble", self.nimble),
+            ("qnap", self.qnap),
+            ("solidfire", self.solidfire),
+            ("stx", self.stx),
+            ("synology", self.synology),
+            ("zadara", self.zadara),
         ]:
             for backend_key, backend in backends.items():
                 # Check for duplicate backend names across all types

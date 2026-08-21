@@ -10,6 +10,7 @@ and rendered into Cinder configuration files.
 from unittest.mock import Mock, patch
 
 import jinja2
+import pydantic
 import pytest
 
 from cinder_volume import context, error
@@ -30,6 +31,45 @@ class TestBaseBackendContext:
         assert ctx.backend_config == backend_config
         assert ctx.supports_cluster is True
 
+    def test_subclass_tls_material_uses_generic_rendering_path(self):
+        """A subclass descriptor should route content through the base class."""
+
+        class TestBackendContext(context.BaseBackendContext):
+            _tls_materials = (
+                context.BackendTLSMaterial(
+                    content_option="test_tls_content",
+                    path_option="test_tls_path",
+                    filename="{backend_name}-test-tls.pem",
+                    dest=context.ETC_CINDER_D_CONF_DIR,
+                    mode=0o600,
+                    verify_option="test_tls_verify",
+                ),
+            )
+
+        ctx = TestBackendContext(
+            "test-backend",
+            {"test_tls_content": pydantic.SecretStr("PRIVATE_MATERIAL")},
+        )
+
+        cinder_context = ctx.cinder_context()
+        material = next(
+            item
+            for item in ctx.tls_materials
+            if item.content_option == "test_tls_content"
+        )
+
+        assert cinder_context == {
+            "test_tls_path": (
+                "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/"
+                "test-backend-test-tls.pem"
+            ),
+            "test_tls_verify": True,
+        }
+        assert "PRIVATE_MATERIAL" not in str(cinder_context)
+        assert material.filename == "test-backend-test-tls.pem"
+        assert material.dest == context.ETC_CINDER_D_CONF_DIR
+        assert material.mode == 0o600
+
     def test_base_backend_context_context_method(self):
         """Test the context method returns backend config."""
         backend_config = {
@@ -41,18 +81,39 @@ class TestBaseBackendContext:
         result = ctx.context()
         assert result == backend_config
 
-    def test_base_backend_context_with_driver_ssl_cert(self):
-        """Test context method with driver_ssl_cert adds path and verify."""
+    def test_base_backend_context_discards_unsupported_driver_ssl_cert(self):
+        """Unsupported backends never emit a CA path or PEM content."""
         backend_config = {
             "volume_backend_name": "test-backend",
             "driver_ssl_cert": "-----BEGIN CERTIFICATE-----\n...",
         }
-        ctx = context.BaseBackendContext("test-backend", backend_config)
-        result = ctx.context()
+        ctx = context.InfinidatBackendContext("test-backend", backend_config)
+        result = ctx.cinder_context()
 
-        assert "driver_ssl_cert_path" in result
-        assert "test-backend.pem" in result["driver_ssl_cert_path"]
-        assert result["driver_ssl_cert_verify"] is True
+        assert "driver_ssl_cert" not in result
+        assert "driver_ssl_cert_path" not in result
+        assert "driver_ssl_cert_verify" not in result
+
+    def test_driver_ssl_cert_is_registered_only_by_supported_backends(self):
+        """A custom CA is an explicit driver capability."""
+        ctx = context.InfinidatBackendContext("test-backend", {})
+
+        assert list(ctx.tls_materials) == []
+
+        ctx = context.DellpowerstoreBackendContext("test-backend", {})
+
+        materials = {item.content_option: item for item in ctx.tls_materials}
+
+        material = materials["driver_ssl_cert"]
+        assert material.path_option == "driver_ssl_cert_path"
+        assert material.filename == "test-backend.pem"
+        assert material.dest == context.ETC_CINDER_D_CONF_DIR
+        assert material.output_path() == (
+            context.ETC_CINDER_D_CONF_DIR / "test-backend.pem"
+        )
+        assert material.mode == 0o640
+        assert material.verify_option == "driver_ssl_cert_verify"
+        assert material.cleanup is False
 
     def test_base_backend_cinder_context_removes_hidden_keys(self):
         """Test cinder_context removes hidden keys like driver_ssl_cert."""
@@ -86,31 +147,16 @@ class TestBaseBackendContext:
         ctx = context.BaseBackendContext("test-backend", {})
         templates = ctx.template_files()
 
-        assert len(templates) == 2
+        assert len(templates) == 1
         assert templates[0].filename == "test-backend.conf"
         assert templates[0].template_name == "backend.conf.j2"
-        assert templates[1].filename == "test-backend.pem"
-        assert templates[1].template_name == "backend.pem.j2"
 
-    def test_base_backend_pem_template_conditional(self):
-        """Test that .pem template has conditional for driver_ssl_cert_path."""
-        ctx = context.BaseBackendContext("test-backend", {})
-        templates = ctx.template_files()
-        pem_template = templates[1]
+    def test_supported_backend_tls_material_is_not_a_jinja_template(self):
+        """A supported driver's TLS material bypasses Jinja templates."""
+        ctx = context.DellpowerstoreBackendContext("test-backend", {})
 
-        assert len(pem_template.conditionals) > 0
-
-        # Test conditional returns False when cert not present
-        test_context = {"cinder_backends": {"contexts": {"test-backend": {}}}}
-        assert not all(cond(test_context) for cond in pem_template.conditionals)
-
-        # Test conditional returns True when cert is present
-        test_context_with_cert = {
-            "cinder_backends": {
-                "contexts": {"test-backend": {"driver_ssl_cert_path": "/path/to/cert"}}
-            }
-        }
-        assert all(cond(test_context_with_cert) for cond in pem_template.conditionals)
+        assert [item.filename for item in ctx.template_files()] == ["test-backend.conf"]
+        assert [item.filename for item in ctx.tls_materials] == ["test-backend.pem"]
 
     def test_base_backend_directories(self):
         """Test directories returns empty list for base backend."""
@@ -192,6 +238,213 @@ class TestCinderBackendContexts:
         result = cbc.context()
 
         assert result["cluster_ok"] is True
+
+
+class TestHitachiBackendTLSMaterial:
+    """Retain the existing Hitachi mirror TLS material behavior."""
+
+    def test_hitachi_mirror_public_input_routes_to_cinder_path(self):
+        """The charm's mirror certificate input should become a Cinder path."""
+        ctx = context.HitachiBackendContext(
+            "hitachi01",
+            {"hitachi_mirror_ssl_cert": pydantic.SecretStr("MIRROR_CA_CONTENT")},
+        )
+
+        result = ctx.cinder_context()
+        materials = {item.filename: item for item in ctx.tls_materials}
+        material = materials["hitachi01_mirror.pem"]
+
+        assert result["hitachi_mirror_ssl_cert_path"] == (
+            "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/hitachi01_mirror.pem"
+        )
+        assert result["hitachi_mirror_ssl_cert_verify"] is True
+        assert "hitachi_mirror_ssl_cert" not in result
+        assert "MIRROR_CA_CONTENT" not in str(result)
+        assert material.content_option == "hitachi_mirror_ssl_cert"
+
+    def test_hitachi_mirror_tls_material_is_rendered_as_a_path(self):
+        """Test mirror CA content remains hidden behind its rendered path."""
+        ctx = context.HitachiBackendContext(
+            "hitachi01",
+            {
+                "volume_backend_name": "hitachi01",
+                "hitachi_mirror_ssl_cert": pydantic.SecretStr("MIRROR_CA_CONTENT"),
+            },
+        )
+
+        result = ctx.cinder_context()
+        full_context = ctx.context()
+        materials = {item.filename: item for item in ctx.tls_materials}
+
+        assert "MIRROR_CA_CONTENT" not in str(result)
+        assert "hitachi_mirror_ssl_cert" not in full_context
+        assert result["hitachi_mirror_ssl_cert_path"] == (
+            "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/hitachi01_mirror.pem"
+        )
+        assert result["hitachi_mirror_ssl_cert_verify"] is True
+        assert materials["hitachi01_mirror.pem"].mode == 0o640
+
+    def test_hitachi_mirror_tls_material_uses_generic_registry(self):
+        """The Hitachi mirror certificate should be declared generically."""
+        ctx = context.HitachiBackendContext("hitachi01", {})
+
+        materials = {item.content_option: item for item in ctx.tls_materials}
+
+        material = materials["hitachi_mirror_ssl_cert"]
+        assert material.path_option == "hitachi_mirror_ssl_cert_path"
+        assert material.filename == "hitachi01_mirror.pem"
+        assert material.dest == context.ETC_CINDER_D_CONF_DIR
+        assert material.mode == 0o640
+        assert material.verify_option == "hitachi_mirror_ssl_cert_verify"
+        assert material.cleanup is False
+
+
+class TestNetappBackendTLSMaterials:
+    """Characterize NetApp declarations in the generic TLS registry."""
+
+    def test_netapp_tls_materials_use_generic_registry(self):
+        """NetApp should declare all four materials without changing metadata."""
+        ctx = context.NetappBackendContext("ontap01", {})
+
+        materials = {item.content_option: item for item in ctx.tls_materials}
+
+        expected = {
+            "netapp_ssl_cert_path": (
+                "ontap01-netapp-ssl-cert.pem",
+                0o640,
+            ),
+            "netapp_private_key_file": (
+                "ontap01-netapp-private-key.pem",
+                0o600,
+            ),
+            "netapp_certificate_file": (
+                "ontap01-netapp-certificate.pem",
+                0o640,
+            ),
+            "netapp_ca_certificate_file": (
+                "ontap01-netapp-ca-certificate.pem",
+                0o640,
+            ),
+        }
+        for option, (filename, mode) in expected.items():
+            material = materials[option]
+            assert material.path_option == option
+            assert material.filename == filename
+            assert material.dest == context.ETC_CINDER_D_CONF_DIR
+            assert material.mode == mode
+            assert material.verify_option is None
+            assert material.cleanup is True
+
+    def test_cleanup_paths_cover_owned_backend_tls_material_only(self):
+        """Cleanup discovery should include only explicitly owned TLS files."""
+        assert set(context.backend_tls_material_cleanup_paths()) == {
+            context.ETC_CINDER_D_CONF_DIR / "*-netapp-ssl-cert.pem",
+            context.ETC_CINDER_D_CONF_DIR / "*-netapp-private-key.pem",
+            context.ETC_CINDER_D_CONF_DIR / "*-netapp-certificate.pem",
+            context.ETC_CINDER_D_CONF_DIR / "*-netapp-ca-certificate.pem",
+            context.ETC_CINDER_D_CONF_DIR / "*-nimble-verify-cert.pem",
+        }
+
+
+class TestNimbleBackendTLSMaterial:
+    """Characterize Nimble verification certificate material."""
+
+    @pytest.mark.parametrize("verify", [False, True])
+    def test_nimble_tls_material_routes_to_path_without_changing_verify(self, verify):
+        """Nimble certificate content should become a path only."""
+        ctx = context.NimbleBackendContext(
+            "nimble01",
+            {
+                "nimble_verify_cert_path": pydantic.SecretStr("NIMBLE_CA"),
+                "nimble_verify_certificate": verify,
+            },
+        )
+
+        result = ctx.cinder_context()
+        materials = {item.content_option: item for item in ctx.tls_materials}
+        material = materials["nimble_verify_cert_path"]
+
+        assert result["nimble_verify_cert_path"] == (
+            "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/"
+            "nimble01-nimble-verify-cert.pem"
+        )
+        assert result["nimble_verify_certificate"] is verify
+        assert "NIMBLE_CA" not in str(result)
+        assert material.path_option == "nimble_verify_cert_path"
+        assert material.filename == "nimble01-nimble-verify-cert.pem"
+        assert material.dest == context.ETC_CINDER_D_CONF_DIR
+        assert material.mode == 0o640
+        assert material.verify_option is None
+        assert material.cleanup is True
+
+
+@pytest.mark.parametrize(
+    ("backend", "expected"),
+    [
+        (
+            context.DellscBackendContext(
+                "dellsc01",
+                {
+                    "dell_sc_verify_cert": False,
+                    "san_private_key": "/etc/cinder/dellsc.key",
+                },
+            ),
+            {
+                "dell_sc_verify_cert": False,
+                "san_private_key": "/etc/cinder/dellsc.key",
+            },
+        ),
+        (
+            context.FujitsueternusdxBackendContext(
+                "fujitsu01",
+                {
+                    "cinder_eternus_config_file": "/etc/cinder/eternus.xml",
+                    "fujitsu_private_key_path": "$state_path/eternus",
+                },
+            ),
+            {
+                "cinder_eternus_config_file": "/etc/cinder/eternus.xml",
+                "fujitsu_private_key_path": "$state_path/eternus",
+            },
+        ),
+        (
+            context.HuaweidoradoBackendContext(
+                "huawei01",
+                {"cinder_huawei_conf_file": "/etc/cinder/huawei.xml"},
+            ),
+            {"cinder_huawei_conf_file": "/etc/cinder/huawei.xml"},
+        ),
+        (
+            context.IbmgpfsBackendContext(
+                "gpfs01",
+                {
+                    "gpfs_private_key": "/etc/cinder/gpfs.key",
+                    "gpfs_hosts_key_file": "$state_path/ssh_known_hosts",
+                },
+            ),
+            {
+                "gpfs_private_key": "/etc/cinder/gpfs.key",
+                "gpfs_hosts_key_file": "$state_path/ssh_known_hosts",
+            },
+        ),
+        (
+            context.SynologyBackendContext("synology01", {"synology_ssl_verify": True}),
+            {"synology_ssl_verify": True},
+        ),
+        (
+            context.ZadaraBackendContext(
+                "zadara01",
+                {"zadara_vpsa_use_ssl": False, "zadara_ssl_cert_verify": True},
+            ),
+            {"zadara_vpsa_use_ssl": False, "zadara_ssl_cert_verify": True},
+        ),
+    ],
+)
+def test_non_material_paths_and_verification_booleans_pass_through(backend, expected):
+    """Existing Cinder paths and booleans should remain unchanged."""
+    result = backend.cinder_context()
+
+    assert {key: result[key] for key in expected} == expected
 
 
 class TestBackendTemplateRendering:
