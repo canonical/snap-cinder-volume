@@ -57,7 +57,10 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
     def install_hook(cls, snap: Snap) -> None:
         """Install hook for the Cinder volume snap."""
         log.setup_logging(snap.paths.common / "hooks.log")
-        cls().install(snap)
+        try:
+            cls().install(snap)
+        except error.CinderError:
+            logging.warning("Configuration not complete", exc_info=True)
 
     @classmethod
     def configure_hook(cls, snap: Snap) -> None:
