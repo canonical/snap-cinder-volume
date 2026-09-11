@@ -31,7 +31,7 @@ jobs:
             echo PATH=$PATH >> $GITHUB_ENV
 
         - name: TICS
-          uses: tiobe/tics-github-action@v3
+          uses: tiobe/tics-github-action@v4
           with:
             mode: qserver
             viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
