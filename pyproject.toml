@@ -27,7 +27,7 @@ packages = ["cinder_volume", "cinder_volume.scripts"]
 cinder_volume = ["templates/*.j2"]
 
 [tool.uv.sources]
-snap-helpers = { git = "https://github.com/albertodonato/snap-helpers" }
+snap-helpers = { git = "https://github.com/albertodonato/snap-helpers", rev = "76f8166b640163c0f20887829e31b2cafbfdec11" }
 
 [tool.pytest.ini_options]
 minversion = "6.0"
