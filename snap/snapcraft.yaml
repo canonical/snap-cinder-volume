@@ -137,9 +137,12 @@ parts:
     override-build: |
       craftctl default
       cinder-snap-helpers write-hooks
-      # purge external symlinks created by uv venv
-      rm -f "$CRAFT_PART_INSTALL/bin/python"
-      rm -f "$CRAFT_PART_INSTALL/bin/python3.14"
+      # purge dangling venv symlinks pointing into the build directory
+      # Replace absolute venv links into the build directory with relative links.
+      rm -f $CRAFT_PART_INSTALL/bin/python
+      rm -f $CRAFT_PART_INSTALL/bin/python3.14
+      ln -s python3 $CRAFT_PART_INSTALL/bin/python
+      ln -s ../usr/bin/python3.14 $CRAFT_PART_INSTALL/bin/python3.14
 
   bin:
     source: bin/
