@@ -32,6 +32,19 @@ ManagedFile = template.Template | context.BackendTLSMaterial
 ManagedOutput = ManagedFile | Path
 PreparedFile = tuple[ManagedFile, bytes | None]
 
+SNAP_FEATURES = {
+    "features.pure-replication-ssl-cert",
+}
+
+
+def set_snap_features(snap):
+    """Record the features this revision supports.
+
+    The value is the revision that wrote it, so a consumer can tell a
+    marker left behind by a newer revision after a downgrade.
+    """
+    snap.config.set({key: str(snap.revision) for key in SNAP_FEATURES})
+
 
 @dataclasses.dataclass(frozen=True)
 class OriginalFile:
@@ -57,6 +70,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
     def install_hook(cls, snap: Snap) -> None:
         """Install hook for the Cinder volume snap."""
         log.setup_logging(snap.paths.common / "hooks.log")
+        set_snap_features(snap)
         try:
             cls().install(snap)
         except error.CinderError:
@@ -66,6 +80,7 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
     def configure_hook(cls, snap: Snap) -> None:
         """Configure hook for the Cinder volume snap."""
         log.setup_logging(snap.paths.common / "hooks.log")
+        set_snap_features(snap)
         try:
             cls().configure(snap)
         except error.CinderError:

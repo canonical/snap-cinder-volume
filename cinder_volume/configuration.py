@@ -212,6 +212,9 @@ class PureConfiguration(BaseBackendConfiguration):
     pure_api_token: str  # REST API authorization token
     protocol: str = Field(default="fc", pattern="^(iscsi|fc|nvme)$")
 
+    # TLS material received as content and rendered to snap-owned file
+    replication_driver_ssl_cert: pydantic.SecretStr | None = None
+
 
 class DellSCConfiguration(BaseBackendConfiguration):
     """All options recognised by the **Dell Storage Center** Cinder driver.
