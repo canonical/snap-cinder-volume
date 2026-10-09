@@ -10,3 +10,5 @@ jobs:
         uses: actions/checkout@v6
       - name: Build snap locally
         uses: canonical/action-build@v1.3.0
+      - name: Install snap
+        run: sudo snap install --dangerous cinder-volume_*.snap
