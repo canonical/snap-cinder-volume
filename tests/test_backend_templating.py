@@ -299,6 +299,101 @@ class TestHitachiBackendTLSMaterial:
         assert material.cleanup is False
 
 
+class TestPureReplicationTLSMaterial:
+    """The replication target CA is carried inside replication_device."""
+
+    REPLICATION_DEVICE = "backend_id:target,san_ip:192.0.2.1,api_token:TOKEN,type:sync"
+    PATH = "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/pure01_replication.pem"
+
+    def _ctx(self, **config):
+        return context.PureBackendContext(
+            "pure01", {"volume_backend_name": "pure01", **config}
+        )
+
+    def test_replication_tls_material_uses_generic_registry(self):
+        """The replication certificate should be declared generically."""
+        ctx = self._ctx()
+
+        materials = {item.content_option: item for item in ctx.tls_materials}
+
+        material = materials["replication_driver_ssl_cert"]
+        assert material.path_option == "replication_driver_ssl_cert_path"
+        assert material.filename == "pure01_replication.pem"
+        assert material.dest == context.ETC_CINDER_D_CONF_DIR
+        assert material.mode == 0o640
+        assert material.verify_option == "replication_driver_ssl_cert_verify"
+        assert material.cleanup is True
+
+    def test_cert_is_appended_to_replication_device(self):
+        """With a target and a CA, verification and path go in the device."""
+        ctx = self._ctx(
+            replication_device=self.REPLICATION_DEVICE,
+            replication_driver_ssl_cert=pydantic.SecretStr("REPL_CA_CONTENT"),
+        )
+
+        result = ctx.cinder_context()
+
+        assert result["replication_device"] == (
+            f"{self.REPLICATION_DEVICE},ssl_cert_verify:true,ssl_cert_path:{self.PATH}"
+        )
+        assert "replication_driver_ssl_cert" not in result
+        assert "replication_driver_ssl_cert_path" not in result
+        assert "replication_driver_ssl_cert_verify" not in result
+        assert "REPL_CA_CONTENT" not in str(result)
+        assert "REPL_CA_CONTENT" not in str(ctx.context())
+
+    def test_replication_cert_does_not_enable_primary_verification(self):
+        """The replication CA must not leak into the primary driver_ssl_* keys."""
+        ctx = self._ctx(
+            replication_device=self.REPLICATION_DEVICE,
+            replication_driver_ssl_cert=pydantic.SecretStr("REPL_CA_CONTENT"),
+        )
+
+        result = ctx.cinder_context()
+
+        assert "driver_ssl_cert_path" not in result
+        assert "driver_ssl_cert_verify" not in result
+
+    def test_primary_and_replication_certs_are_independent(self):
+        """Both CAs may be set; each goes to its own file and setting."""
+        ctx = self._ctx(
+            replication_device=self.REPLICATION_DEVICE,
+            driver_ssl_cert=pydantic.SecretStr("PRIMARY_CA"),
+            replication_driver_ssl_cert=pydantic.SecretStr("REPL_CA"),
+        )
+
+        result = ctx.cinder_context()
+
+        assert result["driver_ssl_cert_path"] == (
+            "{{ snap_paths.common }}/etc/cinder/cinder.conf.d/pure01.pem"
+        )
+        assert result["driver_ssl_cert_verify"] is True
+        assert result["replication_device"].endswith(f"ssl_cert_path:{self.PATH}")
+        filenames = {item.filename for item in ctx.tls_materials}
+        assert {"pure01.pem", "pure01_replication.pem"} <= filenames
+
+    def test_cert_without_replication_device_is_not_rendered(self):
+        """A CA with no replication target must not add any keys."""
+        ctx = self._ctx(
+            replication_driver_ssl_cert=pydantic.SecretStr("REPL_CA_CONTENT"),
+        )
+
+        result = ctx.cinder_context()
+
+        assert "replication_device" not in result
+        assert not any(key.startswith("replication_driver_ssl") for key in result)
+        assert "REPL_CA_CONTENT" not in str(result)
+
+    def test_replication_device_without_cert_is_unchanged(self):
+        """Without a CA, replication_device is passed through as-is."""
+        ctx = self._ctx(replication_device=self.REPLICATION_DEVICE)
+
+        result = ctx.cinder_context()
+
+        assert result["replication_device"] == self.REPLICATION_DEVICE
+        assert "ssl_cert" not in result["replication_device"]
+
+
 class TestNetappBackendTLSMaterials:
     """Characterize NetApp declarations in the generic TLS registry."""
 
@@ -343,6 +438,7 @@ class TestNetappBackendTLSMaterials:
             context.ETC_CINDER_D_CONF_DIR / "*-netapp-certificate.pem",
             context.ETC_CINDER_D_CONF_DIR / "*-netapp-ca-certificate.pem",
             context.ETC_CINDER_D_CONF_DIR / "*-nimble-verify-cert.pem",
+            context.ETC_CINDER_D_CONF_DIR / "*_replication.pem",
         }
 
 

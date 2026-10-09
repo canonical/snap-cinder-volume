@@ -1137,7 +1137,23 @@ class HitachiBackendContext(BaseBackendContext):
 class PureBackendContext(BaseBackendContext):
     """Render a Pure Storage FlashArray backend stanza."""
 
-    _hidden_keys = ("protocol",)
+    _hidden_keys = (
+        "protocol",
+        "replication_driver_ssl_cert_path",
+        "replication_driver_ssl_cert_verify",
+    )
+
+    _tls_materials = (
+        BackendTLSMaterial(
+            content_option="replication_driver_ssl_cert",
+            path_option="replication_driver_ssl_cert_path",
+            filename="{backend_name}_replication.pem",
+            dest=ETC_CINDER_D_CONF_DIR,
+            mode=0o640,
+            verify_option="replication_driver_ssl_cert_verify",
+            cleanup=True,
+        ),
+    )
 
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
@@ -1163,6 +1179,13 @@ class PureBackendContext(BaseBackendContext):
                 "volume_driver": driver_class,
             }
         )
+
+        path = context.get("replication_driver_ssl_cert_path")
+        if path and context.get("replication_device"):
+            context["replication_device"] += (
+                f",ssl_cert_verify:true,ssl_cert_path:{path}"
+            )
+
         return context
 
 
