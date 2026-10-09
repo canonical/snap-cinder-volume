@@ -80,7 +80,7 @@ See "Configuration Reference" for full details.
 
 Configure one or more Ceph backends using the `ceph.<backend-name>.*` namespace:
 
-* `ceph.<backend-name>.volume-backend-name`  Name for this backend (must be unique)
+* `ceph.<backend-name>.volume-backend-name`  Name for this backend (backends may share a name to be pooled by Cinder)
 * `ceph.<backend-name>.rbd-pool`             Name of the Ceph pool to use
 * `ceph.<backend-name>.rbd-user`             Ceph user for access
 * `ceph.<backend-name>.rbd-secret-uuid`      Secret UUID for authentication
@@ -95,14 +95,14 @@ Configure one or more Ceph backends using the `ceph.<backend-name>.*` namespace:
 * `ceph.<backend-name>.image-volume-cache-max-count` (optional) Max cache count for this backend
 * `ceph.<backend-name>.volume-dd-blocksize`  (4096) Block size for volume copy operations
 
-You may define multiple backends by using different backend names, e.g. `ceph.ceph1.*`, `ceph.ssdpool.*`, etc. Each backend name must be unique and each pool must only be used by one backend.
+You may define multiple backends by using different backend names, e.g. `ceph.ceph1.*`, `ceph.ssdpool.*`, etc. Each backend key must be unique and each pool must only be used by one backend. Backends may share a `volume-backend-name`, which is the standard Cinder way of pooling several backends behind one volume type.
 
 ### hitachi (backend)
 
 Configure one or more Hitachi VSP backends using the `hitachi.<backend-name>.*` namespace:
 
 **Required options:**
-* `hitachi.<backend-name>.volume-backend-name`  Unique name for this backend
+* `hitachi.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `hitachi.<backend-name>.san-ip`              Management IP or FQDN of the VSP array
 * `hitachi.<backend-name>.san-login`           Username for the array
 * `hitachi.<backend-name>.san-password`        Password for the array
@@ -140,7 +140,7 @@ sudo snap set cinder-volume \
 Configure one or more Pure Storage FlashArray backends using the `pure.<backend-name>.*` namespace:
 
 **Required options:**
-* `pure.<backend-name>.volume-backend-name`  Unique name for this backend
+* `pure.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `pure.<backend-name>.san-ip`              Management IP or FQDN of the FlashArray
 * `pure.<backend-name>.pure-api-token`      REST API authorization token from Purity system
 
@@ -192,7 +192,7 @@ sudo snap set cinder-volume \
 Configure one or more Dell SC backends using the `dellsc.<backend-name>.*` namespace:
 
 **Required options:**
-* `dellsc.<backend-name>.volume-backend-name`  Unique name for this backend
+* `dellsc.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `dellsc.<backend-name>.san-ip`               Dell DSM management IP
 * `dellsc.<backend-name>.san-login`            Dell DSM management username
 * `dellsc.<backend-name>.san-password`         Dell DSM management password
@@ -228,7 +228,7 @@ sudo snap set cinder-volume \
 Configure one or more Dell PowerStore backends using the `dellpowerstore.<backend-name>.*` namespace:
 
 **Required options:**
-* `dellpowerstore.<backend-name>.volume-backend-name`  Unique name for this backend
+* `dellpowerstore.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `dellpowerstore.<backend-name>.san-ip`               Dell PowerStore management IP/FQDN 
 * `dellpowerstore.<backend-name>.san-login`            Dell PowerStore management username 
 * `dellpowerstore.<backend-name>.san-password`         Dell PowerStore management password
@@ -268,7 +268,7 @@ sudo snap set cinder-volume \
 Configure one or more HPE 3Par backends using the `hpe3par.<backend-name>.*` namespace:
 
 **Required options:**
-* `hpe3par.<backend-name>.volume-backend-name`  Unique name for this backend
+* `hpe3par.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `hpe3par.<backend-name>.san-ip`               HPE 3Par management IP
 * `hpe3par.<backend-name>.san-login`            HPE 3Par management username 
 * `hpe3par.<backend-name>.san-password`         HPE 3Par management password
@@ -327,7 +327,7 @@ sudo snap set cinder-volume \
 Configure one or more Infinidat InfiniBox backends using the `infinidat.<backend-name>.*` namespace:
 
 **Required options:**
-* `infinidat.<backend-name>.volume-backend-name`  Unique name for this backend
+* `infinidat.<backend-name>.volume-backend-name`  Name for this backend (may be shared with other backends to pool them)
 * `infinidat.<backend-name>.san-ip`               InfiniBox management IP address
 * `infinidat.<backend-name>.san-login`            InfiniBox username
 * `infinidat.<backend-name>.san-password`         InfiniBox password
