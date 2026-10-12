@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -212,7 +212,7 @@ requires-dist = [
     { name = "pylint", marker = "extra == 'tics'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "snap-helpers", git = "https://github.com/albertodonato/snap-helpers?rev=76f8166b640163c0f20887829e31b2cafbfdec11" },
+    { name = "snap-helpers", git = "https://github.com/albertodonato/snap-helpers?rev=3241a1a13e89779fd1a8c84a779c02fc069de568" },
 ]
 provides-extras = ["dev", "tics"]
 
@@ -919,7 +919,7 @@ wheels = [
 [[package]]
 name = "snap-helpers"
 version = "0.4.2"
-source = { git = "https://github.com/albertodonato/snap-helpers?rev=76f8166b640163c0f20887829e31b2cafbfdec11#76f8166b640163c0f20887829e31b2cafbfdec11" }
+source = { git = "https://github.com/albertodonato/snap-helpers?rev=3241a1a13e89779fd1a8c84a779c02fc069de568#3241a1a13e89779fd1a8c84a779c02fc069de568" }
 dependencies = [
     { name = "pyyaml" },
 ]
