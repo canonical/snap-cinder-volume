@@ -162,6 +162,7 @@ class CephConfiguration(BaseBackendConfiguration):
     rbd_user: str
     rbd_secret_uuid: str
     rbd_key: str
+    fsid: str | None = None
 
 
 class HitachiConfiguration(BaseBackendConfiguration):
@@ -944,7 +945,7 @@ class Configuration(BaseConfiguration):
     def validate_unique_backend_names(self):
         """Validate that all backend names are unique across all backend types."""
         backend_names = set()
-        ceph_pools = set()
+        ceph_pools: dict[str, set[str | None]] = {}
 
         # Check all backend types for unique backend names
         for backend_type, backends in [
@@ -980,11 +981,13 @@ class Configuration(BaseConfiguration):
 
                 # Check for duplicate Ceph pools (only applies to Ceph backends)
                 if backend_type == "ceph" and hasattr(backend, "rbd_pool"):
-                    if backend.rbd_pool in ceph_pools:
+                    fsids = ceph_pools.setdefault(backend.rbd_pool, set())
+                    fsid = getattr(backend, "fsid", None)
+                    if fsids and (fsid is None or None in fsids or fsid in fsids):
                         raise ValueError(
                             f"Duplicate Ceph pool '{backend.rbd_pool}' "
                             f"found in backend '{backend_key}'"
                         )
-                    ceph_pools.add(backend.rbd_pool)
+                    fsids.add(fsid)
 
         return self

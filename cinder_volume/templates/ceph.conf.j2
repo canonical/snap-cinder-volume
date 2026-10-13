@@ -7,6 +7,9 @@
 [global]
 auth_supported = {{ ceph_ctx.auth }}
 mon host = {{ ceph_ctx.mon_hosts }}
+{%- if ceph_ctx.fsid %}
+fsid = {{ ceph_ctx.fsid }}
+{%- endif %}
 log to syslog = true
 err to syslog = true
 clog to syslog = true
