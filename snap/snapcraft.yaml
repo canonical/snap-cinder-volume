@@ -12,7 +12,7 @@ grade: stable
 confinement: strict
 
 assumes:
-- snapd2.73
+  - snapd2.73
 
 platforms:
   amd64:
@@ -61,6 +61,13 @@ apps:
       - nvme-control
       - iscsi-initiator
       - dm-multipath
+  ceph-check:
+    environment:
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/lib/python3.14:$SNAP/lib/python3.14/site-packages
+      LD_LIBRARY_PATH: LD_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/ceph
+    command: bin/ceph-check
+    plugs:
+      - network
 
 parts:
   snap-version:
