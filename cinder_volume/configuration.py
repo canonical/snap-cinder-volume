@@ -944,15 +944,22 @@ class Configuration(BaseConfiguration):
     def validate_unique_ceph_pools(self):
         """Validate that each Ceph pool is used by at most one Ceph backend.
 
-        Backends are free to share a ``volume_backend_name``: this is the
-        standard Cinder way of pooling several backends behind a single
-        volume type. Each backend is still identified by its own unique
-        key (the snap configuration key), which names its configuration
-        file and its section in ``cinder.conf``.
+        The Cinder RBD driver expects exclusive management access to its
+        pool (``rbd_exclusive_cinder_pool``, true by default) and derives
+        the capacity statistics it reports to the scheduler from that
+        assumption. Two backends on the same pool would report inaccurate
+        statistics, so Cinder strongly discourages sharing a pool.
+
+        This is unrelated to ``volume_backend_name``: backends are free to
+        share that name, which is the standard Cinder way of pooling several
+        backends behind a single volume type. Each backend is still
+        identified by its own unique key (the snap configuration key), which
+        names its configuration file and its section in ``cinder.conf``.
         """
         ceph_pools = set()
 
         for backend_key, backend in self.ceph.items():
+            # Only the pool matters here, not volume_backend_name.
             if backend.rbd_pool in ceph_pools:
                 raise ValueError(
                     f"Duplicate Ceph pool '{backend.rbd_pool}' "
