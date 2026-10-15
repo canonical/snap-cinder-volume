@@ -134,6 +134,7 @@ class BaseBackendContext(Context):
             verify_option="driver_ssl_cert_verify",
         ),
     )
+    _owned_files: typing.Sequence[pathlib.Path] = ()
 
     def __init__(self, backend_name: str, backend_config: dict[str, typing.Any]):
         """Initialize with backend name and config."""
@@ -179,6 +180,14 @@ class BaseBackendContext(Context):
                             backend_name=self.backend_name
                         )
                     )
+
+    @property
+    def owned_files(self) -> list[pathlib.Path]:
+        """Owned file paths of this backend, relative to SNAP_COMMON."""
+        return [
+            pathlib.Path(str(p).format(backend_name=self.backend_name))
+            for p in self._owned_files
+        ]
 
     @property
     def hidden_keys(self) -> collections.abc.Generator[str]:
@@ -229,6 +238,16 @@ def backend_tls_material_cleanup_paths() -> collections.abc.Generator[pathlib.Pa
         for material in backend_class.__dict__.get("_tls_materials", ()):
             if material.cleanup:
                 yield material.dest / material.filename.format(backend_name="*")
+
+
+def backend_owned_cleanup_paths() -> collections.abc.Generator[pathlib.Path]:
+    """Return relative glob patterns for files owned by backend contexts."""
+    backend_classes = [BaseBackendContext]
+    while backend_classes:
+        backend_class = backend_classes.pop()
+        backend_classes.extend(backend_class.__subclasses__())
+        for pattern in backend_class.__dict__.get("_owned_files", ()):
+            yield pathlib.Path(str(pattern).format(backend_name="*"))
 
 
 class SolidfireBackendContext(BaseBackendContext):
@@ -1047,7 +1066,12 @@ ETC_CEPH = pathlib.Path("etc/ceph")
 class CephBackendContext(BaseBackendContext):
     """Context provider for Ceph backend."""
 
-    _hidden_keys = ("rbd_key", "keyring", "mon_hosts", "auth")
+    _hidden_keys = ("rbd_key", "keyring", "mon_hosts", "auth", "fsid")
+
+    _owned_files = (
+        ETC_CEPH / "{backend_name}.conf",
+        ETC_CEPH / "ceph.client.{backend_name}.keyring",
+    )
 
     def __init__(self, backend_name: str, backend_config: dict[str, typing.Any]):
         """Initialize with backend name and config."""

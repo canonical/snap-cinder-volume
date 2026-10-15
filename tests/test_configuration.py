@@ -2417,3 +2417,55 @@ class TestRootConfiguration:
 
         assert "infinibox01" in config.infinidat
         assert config.infinidat["infinibox01"].volume_backend_name == "infinibox01"
+
+
+def _ceph(name, pool, fsid=None):
+    cfg = {
+        "volume-backend-name": name,
+        "mon-hosts": "10.0.0.1",
+        "rbd-pool": pool,
+        "rbd-user": "cinder",
+        "rbd-secret-uuid": "11111111-1111-1111-1111-111111111111",
+        "rbd-key": "AQBUfpVeNl7CHxAA8/f6WTcYFxW2dJ5VyvWmJg==",
+    }
+    if fsid:
+        cfg["fsid"] = fsid
+    return cfg
+
+
+def _base():
+    return {
+        "database": {"url": "sqlite://"},
+        "rabbitmq": {"url": "amqp://"},
+        "cinder": {"project-id": "p", "user-id": "u"},
+    }
+
+
+FSID_A = "aaaaaaaa-0000-0000-0000-000000000000"
+FSID_B = "bbbbbbbb-0000-0000-0000-000000000000"
+
+
+class TestCephPoolUniqueness:
+    @pytest.mark.parametrize(
+        "fsid_1, fsid_2",
+        [(None, None), (FSID_A, FSID_A), (FSID_A, None), (None, FSID_A)],
+    )
+    def test_same_pool_rejected(self, fsid_1, fsid_2):
+        data = _base() | {
+            "ceph": {"a": _ceph("a", "vol", fsid_1), "b": _ceph("b", "vol", fsid_2)}
+        }
+        with pytest.raises(pydantic.ValidationError, match="Duplicate Ceph pool"):
+            configuration.Configuration.model_validate(data)
+
+    def test_same_pool_on_different_clusters_allowed(self):
+        data = _base() | {
+            "ceph": {"a": _ceph("a", "vol", FSID_A), "b": _ceph("b", "vol", FSID_B)}
+        }
+        cfg = configuration.Configuration.model_validate(data)
+        assert cfg.ceph["b"].fsid == FSID_B
+
+    def test_fsid_optional(self):
+        cfg = configuration.Configuration.model_validate(
+            _base() | {"ceph": {"a": _ceph("a", "vol")}}
+        )
+        assert cfg.ceph["a"].fsid is None

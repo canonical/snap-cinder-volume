@@ -764,3 +764,33 @@ class TestInfinidatBackendContext:
         assert "infinidat_iscsi_netspaces = default_iscsi_space" in rendered
         # The raw Sunbeam protocol key should not be rendered.
         assert "\nprotocol =" not in rendered
+
+
+class TestCephFsid:
+    FSID_A = "aaaaaaaa-0000-0000-0000-000000000000"
+
+    def _render_ceph_conf(self, backend_config):
+        env = jinja2.Environment(
+            loader=jinja2.PackageLoader("cinder_volume", "templates")
+        )
+        ctx = context.CephBackendContext("ceph-a", backend_config).context()
+        env.globals["backend_ctx"] = lambda: ctx
+        return env.get_template("ceph.conf.j2").render(
+            snap_paths=Mock(common="/var/snap/cinder-volume/common")
+        )
+
+    def test_fsid_in_ceph_conf(self):
+        out = self._render_ceph_conf(
+            {"auth": "cephx", "mon_hosts": "10.0.0.1", "fsid": self.FSID_A}
+        )
+        assert f"fsid = {self.FSID_A}" in out
+
+    def test_no_fsid_line_without_fsid(self):
+        out = self._render_ceph_conf({"auth": "cephx", "mon_hosts": "10.0.0.1"})
+        assert "fsid" not in out
+
+    def test_fsid_not_a_cinder_option(self):
+        ctx = context.CephBackendContext(
+            "ceph-a", {"fsid": self.FSID_A, "rbd_pool": "v"}
+        )
+        assert "fsid" not in ctx.cinder_context()

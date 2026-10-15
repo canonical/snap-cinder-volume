@@ -1323,3 +1323,53 @@ class TestGenericCinderVolume:
         )
 
         assert "cluster = cinder-cluster-a" not in rendered
+
+    def _configure_with(self, service, backends, tmp_path):
+        service.backend_contexts = Mock(return_value=backends)
+        service._prepare_configuration_files = Mock(return_value=[])
+        service._write_configuration_files = Mock(return_value=[])
+        service.start_services = Mock()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        service.configure(snap)
+
+    def test_configure_prunes_removed_ceph_backend_files(self, tmp_path):
+        """A removed ceph backend's ceph.conf and keyring are deleted (P10)."""
+        service = cinder_volume.GenericCinderVolume()
+        kept = context.CephBackendContext("ceph-a", {})
+        backends = context.CinderBackendContexts(["ceph-a"], {"ceph-a": kept})
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        for name in ("ceph-a", "ceph-old"):
+            (ceph_dir / f"{name}.conf").write_text("conf\n")
+            (ceph_dir / f"ceph.client.{name}.keyring").write_text("key\n")
+
+        self._configure_with(service, backends, tmp_path)
+
+        assert (ceph_dir / "ceph-a.conf").exists()
+        assert (ceph_dir / "ceph.client.ceph-a.keyring").exists()
+        assert not (ceph_dir / "ceph-old.conf").exists()
+        assert not (ceph_dir / "ceph.client.ceph-old.keyring").exists()
+
+    def test_configure_keeps_unowned_files_in_etc_ceph(self, tmp_path):
+        """Files not matching an owned pattern are left alone."""
+        service = cinder_volume.GenericCinderVolume()
+        kept = context.CephBackendContext("ceph-a", {})
+        backends = context.CinderBackendContexts(["ceph-a"], {"ceph-a": kept})
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        (ceph_dir / "rbdmap").write_text("keep\n")
+
+        self._configure_with(service, backends, tmp_path)
+
+        assert (ceph_dir / "rbdmap").exists()
+
+    def test_owned_files_match_rendered_names(self):
+        """owned_files and the template file names cannot drift apart."""
+        ctx = context.CephBackendContext("ceph-a", {})
+        rendered = {
+            tpl.dest / tpl.filename
+            for tpl in ctx.template_files()
+            if tpl.dest == context.ETC_CEPH
+        }
+        assert rendered == set(ctx.owned_files)
