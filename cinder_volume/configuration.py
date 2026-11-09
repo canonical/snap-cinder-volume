@@ -941,50 +941,30 @@ class Configuration(BaseConfiguration):
     zadara: dict[str, ZadaraConfiguration] = {}
 
     @pydantic.model_validator(mode="after")
-    def validate_unique_backend_names(self):
-        """Validate that all backend names are unique across all backend types."""
-        backend_names = set()
+    def validate_unique_ceph_pools(self):
+        """Validate that each Ceph pool is used by at most one Ceph backend.
+
+        The Cinder RBD driver expects exclusive management access to its
+        pool (``rbd_exclusive_cinder_pool``, true by default) and derives
+        the capacity statistics it reports to the scheduler from that
+        assumption. Two backends on the same pool would report inaccurate
+        statistics, so Cinder strongly discourages sharing a pool.
+
+        This is unrelated to ``volume_backend_name``: backends are free to
+        share that name, which is the standard Cinder way of pooling several
+        backends behind a single volume type. Each backend is still
+        identified by its own unique key (the snap configuration key), which
+        names its configuration file and its section in ``cinder.conf``.
+        """
         ceph_pools = set()
 
-        # Check all backend types for unique backend names
-        for backend_type, backends in [
-            ("ceph", self.ceph),
-            ("hitachi", self.hitachi),
-            ("pure", self.pure),
-            ("dellsc", self.dellsc),
-            ("dellpowerflex", self.dellpowerflex),
-            ("dellpowerstore", self.dellpowerstore),
-            ("dellpowervault", self.dellpowervault),
-            ("dellunity", self.dellunity),
-            ("fujitsueternusdx", self.fujitsueternusdx),
-            ("hpethreepar", self.hpethreepar),
-            ("huaweidorado", self.huaweidorado),
-            ("ibmgpfs", self.ibmgpfs),
-            ("infinidat", self.infinidat),
-            ("netapp", self.netapp),
-            ("nimble", self.nimble),
-            ("qnap", self.qnap),
-            ("solidfire", self.solidfire),
-            ("stx", self.stx),
-            ("synology", self.synology),
-            ("zadara", self.zadara),
-        ]:
-            for backend_key, backend in backends.items():
-                # Check for duplicate backend names across all types
-                if backend.volume_backend_name in backend_names:
-                    raise ValueError(
-                        f"Duplicate backend name '{backend.volume_backend_name}' "
-                        f"found in {backend_type} backend '{backend_key}'"
-                    )
-                backend_names.add(backend.volume_backend_name)
-
-                # Check for duplicate Ceph pools (only applies to Ceph backends)
-                if backend_type == "ceph" and hasattr(backend, "rbd_pool"):
-                    if backend.rbd_pool in ceph_pools:
-                        raise ValueError(
-                            f"Duplicate Ceph pool '{backend.rbd_pool}' "
-                            f"found in backend '{backend_key}'"
-                        )
-                    ceph_pools.add(backend.rbd_pool)
+        for backend_key, backend in self.ceph.items():
+            # Only the pool matters here, not volume_backend_name.
+            if backend.rbd_pool in ceph_pools:
+                raise ValueError(
+                    f"Duplicate Ceph pool '{backend.rbd_pool}' "
+                    f"found in backend '{backend_key}'"
+                )
+            ceph_pools.add(backend.rbd_pool)
 
         return self

@@ -764,3 +764,19 @@ class TestInfinidatBackendContext:
         assert "infinidat_iscsi_netspaces = default_iscsi_space" in rendered
         # The raw Sunbeam protocol key should not be rendered.
         assert "\nprotocol =" not in rendered
+
+
+class TestSharedVolumeBackendName:
+    """Backends sharing a volume_backend_name must not collide on disk."""
+
+    def test_shared_volume_backend_name_gets_distinct_files(self):
+        """Files and namespaces follow the backend key, not volume_backend_name."""
+        config = {"volume_backend_name": "pooled"}
+        first = context.BaseBackendContext("be1", dict(config))
+        second = context.BaseBackendContext("be2", dict(config))
+
+        first_files = {tpl.output_path() for tpl in first.template_files()}
+        second_files = {tpl.output_path() for tpl in second.template_files()}
+
+        assert first.namespace != second.namespace
+        assert first_files.isdisjoint(second_files)
