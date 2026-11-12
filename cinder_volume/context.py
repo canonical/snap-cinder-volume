@@ -1066,7 +1066,7 @@ ETC_CEPH = pathlib.Path("etc/ceph")
 class CephBackendContext(BaseBackendContext):
     """Context provider for Ceph backend."""
 
-    _hidden_keys = ("rbd_key", "keyring", "mon_hosts", "auth")
+    _hidden_keys = ("rbd_key", "keyring", "mon_hosts", "auth", "fsid")
 
     _owned_files = (
         ETC_CEPH / "{backend_name}.conf",
