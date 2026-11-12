@@ -54,7 +54,6 @@ class CinderConfiguration(ParentConfig):
     image_volume_cache_enabled: bool = False
     image_volume_cache_max_size_gb: int = 0
     image_volume_cache_max_count: int = 0
-    default_volume_type: str | None = None
     cluster: str | None = None
 
 
