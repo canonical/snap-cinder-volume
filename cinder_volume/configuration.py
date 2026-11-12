@@ -10,6 +10,7 @@ takes as input from `snap set`.
 import base64
 import binascii
 import typing
+import uuid
 
 import pydantic
 import pydantic.alias_generators
@@ -163,6 +164,24 @@ class CephConfiguration(BaseBackendConfiguration):
     rbd_secret_uuid: str
     rbd_key: str
     fsid: str | None = None
+
+    @pydantic.field_validator("fsid", mode="before")
+    @classmethod
+    def normalize_fsid(cls, value: str | None) -> str | None:
+        """Validate the cluster fsid and store it in canonical form.
+
+        An empty value means no pin. Otherwise the fsid is the UUID, stored
+        lowercase with hyphens.
+        """
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        try:
+            return str(uuid.UUID(value))
+        except ValueError as e:
+            raise ValueError(f"Invalid fsid {value!r}: not a UUID") from e
 
 
 class HitachiConfiguration(BaseBackendConfiguration):

@@ -2537,3 +2537,45 @@ class TestCephPoolUniqueness:
             _base() | {"ceph": {"a": _ceph("a", "vol")}}
         )
         assert cfg.ceph["a"].fsid is None
+
+    def test_fsid_normalized(self):
+        """An fsid is stored in canonical lowercase form."""
+        cfg = configuration.Configuration.model_validate(
+            _base() | {"ceph": {"a": _ceph("a", "vol", FSID_A.upper())}}
+        )
+        assert cfg.ceph["a"].fsid == FSID_A
+
+    def test_same_pool_case_variants_rejected(self):
+        """Two spellings of one fsid are the same cluster."""
+        data = _base() | {
+            "ceph": {
+                "a": _ceph("a", "vol", FSID_A),
+                "b": _ceph("b", "vol", FSID_A.upper()),
+            }
+        }
+        with pytest.raises(pydantic.ValidationError, match="Duplicate Ceph pool"):
+            configuration.Configuration.model_validate(data)
+
+    def test_empty_fsid_is_unpinned(self):
+        """An empty fsid means no pin, like the other empty snap options."""
+        cfg = configuration.Configuration.model_validate(
+            _base() | {"ceph": {"a": _ceph("a", "vol") | {"fsid": ""}}}
+        )
+        assert cfg.ceph["a"].fsid is None
+
+    def test_empty_fsid_does_not_bypass_pool_guard(self):
+        """An empty fsid cannot share a pool with a pinned backend."""
+        data = _base() | {
+            "ceph": {
+                "a": _ceph("a", "vol") | {"fsid": ""},
+                "b": _ceph("b", "vol", FSID_A),
+            }
+        }
+        with pytest.raises(pydantic.ValidationError, match="Duplicate Ceph pool"):
+            configuration.Configuration.model_validate(data)
+
+    def test_invalid_fsid_rejected(self):
+        with pytest.raises(pydantic.ValidationError, match="fsid"):
+            configuration.Configuration.model_validate(
+                _base() | {"ceph": {"a": _ceph("a", "vol", "not-a-uuid")}}
+            )

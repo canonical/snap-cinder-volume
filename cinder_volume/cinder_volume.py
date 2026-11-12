@@ -102,6 +102,27 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         backend_tpls.extend(pruned)
         self.start_services(snap, modified, backend_tpls)
 
+    def backend_applied(self, snap: Snap, backend_name: str) -> bool:
+        """Whether a backend's files on disk match its current settings."""
+        try:
+            backend_contexts = self.backend_contexts(snap)
+            prepared = self._prepare_configuration_files(snap, backend_contexts)
+        except error.CinderError:
+            return False
+        backend_context = backend_contexts.contexts.get(backend_name)
+        if backend_context is None:
+            return False
+        rendered = {
+            self._managed_file_destination(snap, managed_file): content
+            for managed_file, content in prepared
+        }
+        for tpl in backend_context.template_files():
+            dest = self._managed_file_destination(snap, tpl)
+            content = rendered.get(dest)
+            if content is None or not dest.is_file() or dest.read_bytes() != content:
+                return False
+        return True
+
     def start_services(
         self,
         snap: Snap,

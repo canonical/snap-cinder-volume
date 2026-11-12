@@ -1395,6 +1395,58 @@ class TestGenericCinderVolume:
         for snap_service in snap_services.values():
             snap_service.stop.assert_called_once_with()
 
+    def _applied_setup(self, tmp_path):
+        """A ceph backend whose three files each render as their filename."""
+        service = cinder_volume.GenericCinderVolume()
+        ctx = context.CephBackendContext("ceph-a", {})
+        backends = context.CinderBackendContexts(["ceph-a"], {"ceph-a": ctx})
+        service.backend_contexts = Mock(return_value=backends)
+        prepared = [(tpl, f"{tpl.filename}\n".encode()) for tpl in ctx.template_files()]
+        service._prepare_configuration_files = Mock(return_value=prepared)
+        snap = Mock()
+        snap.paths.common = tmp_path
+        paths = []
+        for tpl, content in prepared:
+            path = tmp_path / tpl.output_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+            paths.append(path)
+        return service, snap, paths
+
+    def test_backend_applied_when_files_match(self, tmp_path):
+        service, snap, _ = self._applied_setup(tmp_path)
+        assert service.backend_applied(snap, "ceph-a")
+
+    @pytest.mark.parametrize("name", ["ceph-a.conf", "ceph.client.ceph-a.keyring"])
+    def test_backend_not_applied_when_file_missing(self, tmp_path, name):
+        """The review case: an old ceph.conf but no rendered keyring."""
+        service, snap, paths = self._applied_setup(tmp_path)
+        for path in paths:
+            if path.name == name:
+                path.unlink()
+        assert not service.backend_applied(snap, "ceph-a")
+
+    def test_backend_not_applied_when_any_file_stale(self, tmp_path):
+        """Each of the stanza, ceph.conf and keyring must match."""
+        service, snap, paths = self._applied_setup(tmp_path)
+        for path in paths:
+            original = path.read_bytes()
+            path.write_bytes(b"stale\n")
+            assert not service.backend_applied(snap, "ceph-a"), path
+            path.write_bytes(original)
+
+    def test_backend_not_applied_when_configuration_rejected(self, tmp_path):
+        """Files from an earlier accepted config do not count."""
+        service, snap, _ = self._applied_setup(tmp_path)
+        service.backend_contexts = Mock(
+            side_effect=error.CinderError("Invalid configuration")
+        )
+        assert not service.backend_applied(snap, "ceph-a")
+
+    def test_backend_not_applied_for_unknown_backend(self, tmp_path):
+        service, snap, _ = self._applied_setup(tmp_path)
+        assert not service.backend_applied(snap, "ceph-b")
+
     def test_owned_files_match_rendered_names(self):
         """owned_files and the template file names cannot drift apart."""
         ctx = context.CephBackendContext("ceph-a", {})
