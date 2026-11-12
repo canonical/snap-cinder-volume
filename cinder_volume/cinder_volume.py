@@ -10,6 +10,7 @@ for managing Cinder volume services within a snap environment.
 import abc
 import dataclasses
 import inspect
+import itertools
 import logging
 import os
 import stat
@@ -78,7 +79,13 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
 
     def configure(self, snap: Snap) -> None:
         """Configure the Cinder volume service."""
-        backend_contexts = self.backend_contexts(snap)
+        try:
+            backend_contexts = self.backend_contexts(snap)
+        except error.NoBackendsError:
+            # The last baceknd was removed; drop what it left behind
+            self._prune_all_backend_configs(snap)
+            self.stop_services(snap)
+            raise
 
         prepared = self._prepare_configuration_files(snap, backend_contexts)
         self.setup_dirs(snap, backend_contexts)
@@ -126,6 +133,17 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
             else:
                 logging.debug("Starting service %s", service.name)
                 snap_service.start()
+
+    def stop_services(self, snap: Snap) -> None:
+        """Stop the Cinder volume services."""
+        snap_services = snap.services.list()
+        for service in services.services():
+            snap_service = snap_services.get(service.name)
+            if not snap_service:
+                logging.warning("Service %s not found in snap services", service.name)
+                continue
+            logging.debug("Stopping service %s", service.name)
+            snap_service.stop()
 
     @abc.abstractmethod
     def config_type(self) -> typing.Type[CONF]:
@@ -617,7 +635,10 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         """Return backend files within the snap's explicit ownership scope."""
         backend_config_dir = snap.paths.common / context.ETC_CINDER_D_CONF_DIR
         managed_files = set(backend_config_dir.glob("*.conf"))
-        for cleanup_path in context.backend_tls_material_cleanup_paths():
+        for cleanup_path in itertools.chain(
+            context.backend_tls_material_cleanup_paths(),
+            context.backend_owned_cleanup_paths(),
+        ):
             cleanup_dir = snap.paths.common / cleanup_path.parent
             managed_files.update(cleanup_dir.glob(cleanup_path.name))
         return managed_files
@@ -640,6 +661,8 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
                     backend_context, material
                 ):
                     desired_files.add(self._managed_file_destination(snap, material))
+            for owned in backend_context.owned_files:
+                desired_files.add(snap.paths.common / owned)
         return desired_files
 
     def _remove_backend_files(self, managed_files: typing.Iterable[Path]) -> list[Path]:
@@ -674,6 +697,11 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         existing_files = self._existing_managed_backend_files(snap)
         desired_files = self._desired_managed_backend_files(snap, backend_contexts)
         removed = self._remove_backend_files(existing_files - desired_files)
+        return [path.relative_to(snap.paths.common) for path in removed]
+
+    def _prune_all_backend_configs(self, snap: Snap) -> list[Path]:
+        """Remove every owned backend file: no backend is configured."""
+        removed = self._remove_backend_files(self._existing_managed_backend_files(snap))
         return [path.relative_to(snap.paths.common) for path in removed]
 
 
