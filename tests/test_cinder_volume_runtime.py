@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import stat
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import jinja2
 import pydantic
 import pytest
+from snaphelpers import SnapCtlError
 
-from cinder_volume import cinder_volume, context, error, template
+from cinder_volume import cinder_volume, context, error, services, template
 
 
 def _get_section(rendered: str, section: str) -> str:
@@ -1005,10 +1007,10 @@ class TestGenericCinderVolume:
         assert relative_stale in modified
         assert relative_stale in backend_files
 
-    def test_configure_preserves_owned_material_when_no_backends_validate(
+    def test_configure_preserves_owned_material_when_configuration_fails(
         self, tmp_path
     ):
-        """An invalid empty backend set must preserve active material."""
+        """A failed configuration must preserve active materials."""
         service = cinder_volume.GenericCinderVolume()
         service.backend_contexts = Mock(
             side_effect=error.CinderError("At least one backend must be enabled")
@@ -1323,3 +1325,231 @@ class TestGenericCinderVolume:
         )
 
         assert "cluster = cinder-cluster-a" not in rendered
+
+    def _configure_with(self, service, backends, tmp_path):
+        service.backend_contexts = Mock(return_value=backends)
+        service._prepare_configuration_files = Mock(return_value=[])
+        service._write_configuration_files = Mock(return_value=[])
+        service.start_services = Mock()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        service.configure(snap)
+
+    def test_configure_prunes_removed_ceph_backend_files(self, tmp_path):
+        """A removed ceph backend's ceph.conf and keyring are deleted (P10)."""
+        service = cinder_volume.GenericCinderVolume()
+        kept = context.CephBackendContext("ceph-a", {})
+        backends = context.CinderBackendContexts(["ceph-a"], {"ceph-a": kept})
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        for name in ("ceph-a", "ceph-old"):
+            (ceph_dir / f"{name}.conf").write_text("conf\n")
+            (ceph_dir / f"ceph.client.{name}.keyring").write_text("key\n")
+
+        self._configure_with(service, backends, tmp_path)
+
+        assert (ceph_dir / "ceph-a.conf").exists()
+        assert (ceph_dir / "ceph.client.ceph-a.keyring").exists()
+        assert not (ceph_dir / "ceph-old.conf").exists()
+        assert not (ceph_dir / "ceph.client.ceph-old.keyring").exists()
+
+    def test_configure_keeps_unowned_files_in_etc_ceph(self, tmp_path):
+        """Files not matching an owned pattern are left alone."""
+        service = cinder_volume.GenericCinderVolume()
+        kept = context.CephBackendContext("ceph-a", {})
+        backends = context.CinderBackendContexts(["ceph-a"], {"ceph-a": kept})
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        (ceph_dir / "rbdmap").write_text("keep\n")
+
+        self._configure_with(service, backends, tmp_path)
+
+        assert (ceph_dir / "rbdmap").exists()
+
+    def test_configure_prunes_all_backend_files_when_last_backend_removed(
+        self, tmp_path
+    ):
+        """Removing the last backend deletes its files and stops the service."""
+        service = cinder_volume.GenericCinderVolume()
+        service.backend_contexts = Mock(
+            side_effect=error.NoBackendsError("At least one backend must be enabled")
+        )
+        snap = Mock()
+        snap.paths.common = tmp_path
+        snap_services = {svc.name: Mock() for svc in services.services()}
+        snap.services.list.return_value = snap_services
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        (ceph_dir / "ceph-old.conf").write_text("conf\n")
+        (ceph_dir / "ceph.client.ceph-old.keyring").write_text("key\n")
+        (ceph_dir / "rbdmap").write_text("keep\n")
+        backend_conf = tmp_path / context.ETC_CINDER_D_CONF_DIR / "ceph-old.conf"
+        backend_conf.parent.mkdir(parents=True)
+        backend_conf.write_text("[ceph-old]\n")
+
+        with pytest.raises(error.NoBackendsError):
+            service.configure(snap)
+
+        assert not (ceph_dir / "ceph-old.conf").exists()
+        assert not (ceph_dir / "ceph.client.ceph-old.keyring").exists()
+        assert not backend_conf.exists()
+        assert (ceph_dir / "rbdmap").exists()
+        for snap_service in snap_services.values():
+            snap_service.stop.assert_called_once_with(disable=True)
+
+    def _last_backend_setup(self, tmp_path):
+        """Snap with one removed ceph backend's files on disk."""
+        service = cinder_volume.GenericCinderVolume()
+        service.backend_contexts = Mock(
+            side_effect=error.NoBackendsError("At least one backend must be enabled")
+        )
+        snap = Mock()
+        snap.paths.common = tmp_path
+        snap_services = {svc.name: Mock(enabled=True) for svc in services.services()}
+        snap.services.list.return_value = snap_services
+        ceph_dir = tmp_path / context.ETC_CEPH
+        ceph_dir.mkdir(parents=True)
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        backend_dir.mkdir(parents=True)
+        files = {
+            ceph_dir / "ceph-old.conf": (b"conf\n", 0o644),
+            ceph_dir / "ceph.client.ceph-old.keyring": (b"key\n", 0o600),
+            backend_dir / "ceph-old.conf": (b"[ceph-old]\n", 0o644),
+        }
+        for path, (content, mode) in files.items():
+            path.write_bytes(content)
+            path.chmod(mode)
+        return service, snap, snap_services, files
+
+    @staticmethod
+    def _assert_files_intact(files):
+        for path, (content, mode) in files.items():
+            assert path.read_bytes() == content, path
+            assert stat.S_IMODE(path.stat().st_mode) == mode, path
+
+    def test_last_backend_unlink_failure_restores_files(self, tmp_path):
+        """One file failing to go leaves all of them, and fails the change."""
+        service, snap, snap_services, files = self._last_backend_setup(tmp_path)
+        real_unlink = Path.unlink
+
+        def unlink(path, *args, **kwargs):
+            if path.name == "ceph.client.ceph-old.keyring":
+                raise PermissionError("denied")
+            return real_unlink(path, *args, **kwargs)
+
+        with (
+            patch.object(Path, "unlink", unlink),
+            pytest.raises(error.BackendRemovalError),
+        ):
+            service.configure(snap)
+
+        self._assert_files_intact(files)
+        for snap_service in snap_services.values():
+            snap_service.stop.assert_not_called()
+
+    def test_last_backend_stop_failure_restores_files(self, tmp_path):
+        """Failing to stop the service puts the files back, and fails the change."""
+        service, snap, snap_services, files = self._last_backend_setup(tmp_path)
+        for snap_service in snap_services.values():
+            snap_service.stop.side_effect = SnapCtlError(
+                Mock(returncode=1), b"cannot stop"
+            )
+
+        with pytest.raises(error.BackendRemovalError, match="Failed to stop"):
+            service.configure(snap)
+
+        self._assert_files_intact(files)
+
+    def test_last_backend_removal_retry_succeeds(self, tmp_path):
+        """After a failed removal, the next configure finishes it."""
+        service, snap, snap_services, files = self._last_backend_setup(tmp_path)
+        for snap_service in snap_services.values():
+            snap_service.stop.side_effect = SnapCtlError(
+                Mock(returncode=1), b"cannot stop"
+            )
+        with pytest.raises(error.BackendRemovalError):
+            service.configure(snap)
+
+        for snap_service in snap_services.values():
+            snap_service.stop.side_effect = None
+        with pytest.raises(error.NoBackendsError):
+            service.configure(snap)
+
+        assert not any(path.exists() for path in files)
+        for snap_service in snap_services.values():
+            snap_service.stop.assert_called_with(disable=True)
+
+    def test_stale_prune_failure_restores_removed_files(self, tmp_path):
+        """Two-to-one: a failed prune leaves every stale file in place."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        backend_dir.mkdir(parents=True)
+        first = backend_dir / "a-removed.conf"
+        second = backend_dir / "b-removed.conf"
+        first.write_bytes(b"[a-removed]\n")
+        second.write_bytes(b"[b-removed]\n")
+        real_unlink = Path.unlink
+
+        def unlink(path, *args, **kwargs):
+            if path == second:
+                raise PermissionError("denied")
+            return real_unlink(path, *args, **kwargs)
+
+        with (
+            patch.object(Path, "unlink", unlink),
+            pytest.raises(error.BackendRemovalError),
+        ):
+            service._remove_backend_files([first, second])
+
+        assert first.read_bytes() == b"[a-removed]\n"
+        assert second.read_bytes() == b"[b-removed]\n"
+
+    def test_start_services_enables_disabled_service(self):
+        """A service disabled with the last backend comes back enabled."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap_services = {svc.name: Mock(enabled=False) for svc in services.services()}
+        snap.services.list.return_value = snap_services
+
+        service.start_services(snap, [], [])
+
+        for snap_service in snap_services.values():
+            snap_service.start.assert_called_once_with(enable=True)
+            snap_service.restart.assert_not_called()
+
+    def test_configure_hook_fails_on_backend_removal_error(self, tmp_path):
+        """A failed removal must fail the hook, so snapd rejects the change."""
+        snap = Mock()
+        snap.paths.common = tmp_path
+        with (
+            patch.object(
+                cinder_volume.GenericCinderVolume,
+                "configure",
+                side_effect=error.BackendRemovalError("Failed to stop service"),
+            ),
+            pytest.raises(error.BackendRemovalError),
+        ):
+            cinder_volume.GenericCinderVolume.configure_hook(snap)
+
+    def test_configure_hook_still_tolerates_incomplete_configuration(self, tmp_path):
+        """Other configuration errors keep the hook succeeding, as before."""
+        snap = Mock()
+        snap.paths.common = tmp_path
+        with patch.object(
+            cinder_volume.GenericCinderVolume,
+            "configure",
+            side_effect=error.NoBackendsError("At least one backend must be enabled"),
+        ):
+            cinder_volume.GenericCinderVolume.configure_hook(snap)
+
+    def test_owned_files_match_rendered_names(self):
+        """owned_files and the template file names cannot drift apart."""
+        ctx = context.CephBackendContext("ceph-a", {})
+        rendered = {
+            tpl.dest / tpl.filename
+            for tpl in ctx.template_files()
+            if tpl.dest == context.ETC_CEPH
+        }
+        assert rendered == set(ctx.owned_files)
