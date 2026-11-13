@@ -671,7 +671,7 @@ class TestNetappBackendContext:
         ctx = context.NetappBackendContext(
             "mybackend", {"volume_backend_name": "mybackend"}
         )
-        assert ctx.supports_cluster is True
+        assert ctx.supports_cluster is False
 
     def test_netapp_volume_driver_iscsi(self):
         """Test volume_driver for iscsi protocol."""

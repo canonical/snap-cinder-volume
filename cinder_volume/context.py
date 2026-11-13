@@ -684,7 +684,7 @@ class NetappBackendContext(BaseBackendContext):
     def __init__(self, backend_name: str, backend_config: dict):
         """Initialize with backend name and config."""
         super().__init__(backend_name, backend_config)
-        self.supports_cluster = True  # cluster supported
+        self.supports_cluster = False  # cluster not supported until 2024.2
 
     def context(self) -> dict:
         """Return context for NetApp ONTAP backend."""
