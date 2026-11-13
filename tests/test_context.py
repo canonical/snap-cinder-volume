@@ -666,12 +666,26 @@ class TestNecvBackendContext:
 class TestNetappBackendContext:
     """Test the NetappBackendContext class."""
 
-    def test_netapp_supports_cluster(self):
-        """Test supports_cluster is set correctly."""
+    def test_netapp_supports_cluster_iscsi(self):
+        """Test supports_cluster for iscsi protocol."""
         ctx = context.NetappBackendContext(
-            "mybackend", {"volume_backend_name": "mybackend"}
+            "mybackend", {"volume_backend_name": "mybackend", "protocol": "iscsi"}
         )
         assert ctx.supports_cluster is True
+
+    def test_netapp_supports_cluster_fc(self):
+        """Test supports_cluster for fc protocol."""
+        ctx = context.NetappBackendContext(
+            "mybackend", {"volume_backend_name": "mybackend", "protocol": "fc"}
+        )
+        assert ctx.supports_cluster is True
+
+    def test_netapp_does_not_support_cluster_nvme(self):
+        """Test supports_cluster is false for nvme protocol."""
+        ctx = context.NetappBackendContext(
+            "mybackend", {"volume_backend_name": "mybackend", "protocol": "nvme"}
+        )
+        assert ctx.supports_cluster is False
 
     def test_netapp_volume_driver_iscsi(self):
         """Test volume_driver for iscsi protocol."""
