@@ -244,6 +244,17 @@ class TestCinderConfiguration:
         assert config.user_id == "test-user"
         assert config.region_name == "RegionOne"
 
+    def test_cinder_config_ignores_removed_default_volume_type(self):
+        """A leftover `default-volume-type` value is accepted and ignored."""
+        config = configuration.CinderConfiguration(
+            **{
+                "project-id": "test-project",
+                "user-id": "test-user",
+                "default-volume-type": "my-custom-type",
+            }
+        )
+        assert "default_volume_type" not in config.model_dump()
+
 
 class TestDellSCConfiguration:
     """Test the DellSCConfiguration class."""
