@@ -93,7 +93,7 @@ Configure one or more Ceph backends using the `ceph.<backend-name>.*` namespace:
 * `ceph.<backend-name>.image-volume-cache-enabled` (optional) Enable image volume cache for this backend
 * `ceph.<backend-name>.image-volume-cache-max-size-gb` (optional) Max cache size in GB for this backend
 * `ceph.<backend-name>.image-volume-cache-max-count` (optional) Max cache count for this backend
-* `ceph.<backend-name>.volume-dd-blocksize`  (4096) Block size for volume copy operations
+* `ceph.<backend-name>.volume-dd-blocksize`  (1048576) Block size for volume copy operations
 
 You may define multiple backends by using different backend names, e.g. `ceph.ceph1.*`, `ceph.ssdpool.*`, etc. Each backend key must be unique and each pool must only be used by one backend. Backends may share a `volume-backend-name`, which is the standard Cinder way of pooling several backends behind one volume type.
 
