@@ -291,6 +291,68 @@ class TestGenericCinderVolume:
         assert changed is True
         assert not material_file.exists()
 
+    def test_pure_replication_tls_renders_file_and_device_path(self, tmp_path, caplog):
+        """The replication CA is written to a file referenced by replication_device."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        material_value = "REPL_CA{{ unsafe }}"
+        device = "backend_id:target,san_ip:192.0.2.1,api_token:TOKEN,type:sync"
+        backend = context.PureBackendContext(
+            "pure01",
+            {
+                "volume_backend_name": "pure01",
+                "replication_device": device,
+                "replication_driver_ssl_cert": pydantic.SecretStr(material_value),
+            },
+        )
+        backends = context.CinderBackendContexts(["pure01"], {"pure01": backend})
+        service.render_context = Mock(return_value={"snap_paths": {"common": tmp_path}})
+        service.backend_contexts = Mock(return_value=backends)
+        service.template_files = Mock(return_value=[])
+
+        service.template(snap)
+
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        material_file = backend_dir / "pure01_replication.pem"
+        rendered_config = (backend_dir / "pure01.conf").read_text()
+        assert material_file.read_text() == material_value
+        assert material_file.stat().st_mode & 0o777 == 0o640
+        assert (
+            f"replication_device = {device},"
+            f"ssl_cert_verify:true,ssl_cert_path:{material_file}"
+        ) in rendered_config
+        assert "{{ snap_paths.common }}" not in rendered_config
+        assert "replication_driver_ssl_cert" not in rendered_config
+        assert material_value not in rendered_config
+        assert material_value not in caplog.text
+
+    def test_removing_pure_replication_tls_option_removes_file(self, tmp_path):
+        """Unsetting the replication CA removes its file and the device suffix."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        device = "backend_id:target,san_ip:192.0.2.1,api_token:TOKEN,type:sync"
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        material_file = backend_dir / "pure01_replication.pem"
+        backend_dir.mkdir(parents=True)
+        material_file.write_text("OLD_REPL_CA")
+        backend = context.PureBackendContext(
+            "pure01",
+            {"volume_backend_name": "pure01", "replication_device": device},
+        )
+        backends = context.CinderBackendContexts(["pure01"], {"pure01": backend})
+        service.render_context = Mock(return_value={"snap_paths": {"common": tmp_path}})
+        service.backend_contexts = Mock(return_value=backends)
+        service.template_files = Mock(return_value=[])
+
+        service.template(snap)
+
+        rendered_config = (backend_dir / "pure01.conf").read_text()
+        assert not material_file.exists()
+        assert f"replication_device = {device}\n" in rendered_config
+        assert "ssl_cert" not in rendered_config
+
     def test_removing_netapp_tls_option_removes_material_file(self, tmp_path):
         """Removing one NetApp TLS value should unlink its managed file."""
         service = cinder_volume.GenericCinderVolume()

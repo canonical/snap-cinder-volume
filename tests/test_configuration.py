@@ -62,6 +62,17 @@ class TestParentConfig:
             "MIRROR_PEM",
         ),
         (
+            configuration.PureConfiguration,
+            {
+                "volume-backend-name": "pure01",
+                "san-ip": "10.0.0.1",
+                "pure-api-token": "token",
+                "replication-driver-ssl-cert": "REPL_PEM",
+            },
+            "replication_driver_ssl_cert",
+            "REPL_PEM",
+        ),
+        (
             configuration.NimbleConfiguration,
             {
                 "volume-backend-name": "nimble01",
