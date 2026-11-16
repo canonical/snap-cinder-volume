@@ -61,7 +61,7 @@ apps:
       - nvme-control
       - iscsi-initiator
       - dm-multipath
-
+      - powerflex-connector-config
 parts:
   snap-version:
     plugin: nil
@@ -165,3 +165,9 @@ hooks:
       - network
       - network-control
       - firewall-control
+
+plugs:
+  powerflex-connector-config:
+    interface: system-files
+    read:
+    - /opt/emc/scaleio/openstack/connector.conf
