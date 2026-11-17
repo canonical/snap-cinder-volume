@@ -10,6 +10,7 @@ for managing Cinder volume services within a snap environment.
 import abc
 import dataclasses
 import inspect
+import itertools
 import logging
 import os
 import stat
@@ -617,7 +618,10 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         """Return backend files within the snap's explicit ownership scope."""
         backend_config_dir = snap.paths.common / context.ETC_CINDER_D_CONF_DIR
         managed_files = set(backend_config_dir.glob("*.conf"))
-        for cleanup_path in context.backend_tls_material_cleanup_paths():
+        for cleanup_path in itertools.chain(
+            context.backend_tls_material_cleanup_paths(),
+            context.backend_owned_cleanup_paths(),
+        ):
             cleanup_dir = snap.paths.common / cleanup_path.parent
             managed_files.update(cleanup_dir.glob(cleanup_path.name))
         return managed_files
@@ -640,6 +644,8 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
                     backend_context, material
                 ):
                     desired_files.add(self._managed_file_destination(snap, material))
+            for owned in backend_context.owned_files:
+                desired_files.add(snap.paths.common / owned)
         return desired_files
 
     def _remove_backend_files(self, managed_files: typing.Iterable[Path]) -> list[Path]:
