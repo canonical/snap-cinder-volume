@@ -10,6 +10,7 @@ takes as input from `snap set`.
 import base64
 import binascii
 import typing
+import uuid
 
 import pydantic
 import pydantic.alias_generators
@@ -161,6 +162,25 @@ class CephConfiguration(BaseBackendConfiguration):
     rbd_user: str
     rbd_secret_uuid: str
     rbd_key: str
+    fsid: str | None = None
+
+    @pydantic.field_validator("fsid", mode="before")
+    @classmethod
+    def normalize_fsid(cls, value: str | None) -> str | None:
+        """Validate the cluster fsid and store it in canonical form.
+
+        An empty value means no pin. Otherwise the fsid is the UUID, stored
+        lowercase with hyphens.
+        """
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        try:
+            return str(uuid.UUID(value))
+        except ValueError as e:
+            raise ValueError(f"Invalid fsid {value!r}: not a UUID") from e
 
 
 class HitachiConfiguration(BaseBackendConfiguration):
@@ -949,21 +969,26 @@ class Configuration(BaseConfiguration):
         assumption. Two backends on the same pool would report inaccurate
         statistics, so Cinder strongly discourages sharing a pool.
 
+        Pools of the same name on different clusters are allowed when both
+        backends declare an ``fsid`` and the fsids differ.
+
         This is unrelated to ``volume_backend_name``: backends are free to
         share that name, which is the standard Cinder way of pooling several
         backends behind a single volume type. Each backend is still
         identified by its own unique key (the snap configuration key), which
         names its configuration file and its section in ``cinder.conf``.
         """
-        ceph_pools = set()
+        ceph_pools: dict[str, set[str | None]] = {}
 
         for backend_key, backend in self.ceph.items():
-            # Only the pool matters here, not volume_backend_name.
-            if backend.rbd_pool in ceph_pools:
+            # Only the pool and its cluster matter here, not volume_backend_name.
+            fsids = ceph_pools.setdefault(backend.rbd_pool, set())
+            fsid = backend.fsid
+            if fsids and (fsid is None or None in fsids or fsid in fsids):
                 raise ValueError(
                     f"Duplicate Ceph pool '{backend.rbd_pool}' "
                     f"found in backend '{backend_key}'"
                 )
-            ceph_pools.add(backend.rbd_pool)
+            fsids.add(fsid)
 
         return self
