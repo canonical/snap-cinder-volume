@@ -187,7 +187,7 @@ class TestCinderBackendContexts:
 
     def test_cinder_backend_contexts_requires_enabled_backends(self):
         """Test that at least one backend must be enabled."""
-        with pytest.raises(error.CinderError, match="At least one backend"):
+        with pytest.raises(error.NoBackendsError, match="At least one backend"):
             context.CinderBackendContexts([], {})
 
     def test_cinder_backend_contexts_validates_missing_contexts(self):

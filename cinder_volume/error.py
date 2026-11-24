@@ -6,3 +6,11 @@
 
 class CinderError(Exception):
     """Base class for all Cinder errors."""
+
+
+class NoBackendsError(CinderError):
+    """The configuration enables no backends."""
+
+
+class BackendRemovalError(CinderError):
+    """Removing a backend failed; the previous state was restored."""

@@ -10,6 +10,7 @@ for managing Cinder volume services within a snap environment.
 import abc
 import dataclasses
 import inspect
+import itertools
 import logging
 import os
 import stat
@@ -19,7 +20,7 @@ from pathlib import Path
 
 import jinja2
 import pydantic
-from snaphelpers import Snap
+from snaphelpers import Snap, SnapCtlError
 
 from . import configuration, context, error, log, services, template
 
@@ -45,6 +46,15 @@ class OriginalFile:
 PendingFile = tuple[ManagedFile, Path, Path | None, OriginalFile]
 
 
+@dataclasses.dataclass(frozen=True)
+class RemovedFile:
+    """A backend file removed by configure, kept until the removal is final."""
+
+    path: Path
+    content: bytes
+    mode: int
+
+
 class CinderVolume(typing.Generic[CONF], abc.ABC):
     """Abstract base class for Cinder volume service implementations."""
 
@@ -68,6 +78,9 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         log.setup_logging(snap.paths.common / "hooks.log")
         try:
             cls().configure(snap)
+        except error.BackendRemovalError:
+            logging.error("Backend removal failed", exc_info=True)
+            raise
         except error.CinderError:
             logging.warning("Configuration not complete", exc_info=True)
 
@@ -78,7 +91,20 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
 
     def configure(self, snap: Snap) -> None:
         """Configure the Cinder volume service."""
-        backend_contexts = self.backend_contexts(snap)
+        try:
+            backend_contexts = self.backend_contexts(snap)
+        except error.NoBackendsError:
+            # The last backend was removed; drop what it left behind
+            # and keep the service down
+            removed = self._take_backend_files(
+                self._existing_managed_backend_files(snap)
+            )
+            try:
+                self.disable_services(snap)
+            except error.BackendRemovalError:
+                self._restore_backend_files(removed)
+                raise
+            raise
 
         prepared = self._prepare_configuration_files(snap, backend_contexts)
         self.setup_dirs(snap, backend_contexts)
@@ -120,12 +146,32 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
                 | set(service.restart_trigger_files)
                 | backend_files
             )
-            if common:
+            if not snap_service.enabled:
+                # Disabled when the last backend was removed
+                logging.debug("Enabling and starting service %s", service.name)
+                snap_service.start(enable=True)
+            elif common:
                 logging.debug("Restarting service %s", service.name)
                 snap_service.restart()
             else:
                 logging.debug("Starting service %s", service.name)
                 snap_service.start()
+
+    def disable_services(self, snap: Snap) -> None:
+        """Stop the Cinder volume services and keep them down."""
+        snap_services = snap.services.list()
+        for service in services.services():
+            snap_service = snap_services.get(service.name)
+            if not snap_service:
+                logging.warning("Service %s not found in snap services", service.name)
+                continue
+            logging.debug("Stopping service and disabling %s", service.name)
+            try:
+                snap_service.stop(disable=True)
+            except SnapCtlError as e:
+                raise error.BackendRemovalError(
+                    f"Failed to stop service {service.name}"
+                ) from e
 
     @abc.abstractmethod
     def config_type(self) -> typing.Type[CONF]:
@@ -617,7 +663,10 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
         """Return backend files within the snap's explicit ownership scope."""
         backend_config_dir = snap.paths.common / context.ETC_CINDER_D_CONF_DIR
         managed_files = set(backend_config_dir.glob("*.conf"))
-        for cleanup_path in context.backend_tls_material_cleanup_paths():
+        for cleanup_path in itertools.chain(
+            context.backend_tls_material_cleanup_paths(),
+            context.backend_owned_cleanup_paths(),
+        ):
             cleanup_dir = snap.paths.common / cleanup_path.parent
             managed_files.update(cleanup_dir.glob(cleanup_path.name))
         return managed_files
@@ -640,30 +689,58 @@ class CinderVolume(typing.Generic[CONF], abc.ABC):
                     backend_context, material
                 ):
                     desired_files.add(self._managed_file_destination(snap, material))
+            for owned in backend_context.owned_files:
+                desired_files.add(snap.paths.common / owned)
         return desired_files
 
     def _remove_backend_files(self, managed_files: typing.Iterable[Path]) -> list[Path]:
-        """Remove known backend files without expanding their ownership scope."""
-        removed: list[Path] = []
-        failures: list[tuple[Path, OSError]] = []
-        for managed_file in managed_files:
+        """Remove known backend files, all or none."""
+        return [removed.path for removed in self._take_backend_files(managed_files)]
+
+    def _take_backend_files(
+        self, managed_files: typing.Iterable[Path]
+    ) -> list[RemovedFile]:
+        """Remove backend files, keeping their content until the caller is done.
+
+        If one file cannot be removed, the ones already removed are written
+        back and BackendremovalError is raised, so no backend is left half
+        removed.
+        """
+        removed: list[RemovedFile] = []
+        for managed_file in sorted(managed_files):
             try:
                 logging.debug("Removing managed backend file: %s", managed_file)
+                taken = RemovedFile(
+                    managed_file,
+                    managed_file.read_bytes(),
+                    stat.S_IMODE(managed_file.stat().st_mode),
+                )
                 managed_file.unlink()
-                removed.append(managed_file)
             except FileNotFoundError:
                 continue
             except OSError as e:
                 logging.error(
                     "Failed to remove managed backend file %s: %s", managed_file, e
                 )
-                failures.append((managed_file, e))
-        if failures:
-            failed_paths = ", ".join(str(path) for path, _ in failures)
-            raise error.CinderError(
-                f"Failed to remove managed backend files: {failed_paths}"
-            ) from failures[0][1]
+                self._restore_backend_files(removed)
+                raise error.BackendRemovalError(
+                    f"Faield to remove managed backend files: {managed_file}"
+                ) from e
+            removed.append(taken)
         return removed
+
+    def _restore_backend_files(self, removed: typing.Iterable[RemovedFile]) -> None:
+        """Write removed backend files back, with their original mode."""
+        for taken in removed:
+            try:
+                fd = os.open(
+                    taken.path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, taken.mode
+                )
+                with os.fdopen(fd, "wb") as f:
+                    f.write(taken.content)
+                os.chmod(taken.path, taken.mode)
+            except OSError as e:
+                logging.error("Failed to restore backend file %s: %s", taken.path, e)
 
     def _prune_stale_backend_configs(
         self,
