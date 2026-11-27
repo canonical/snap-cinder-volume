@@ -291,6 +291,95 @@ class TestGenericCinderVolume:
         assert changed is True
         assert not material_file.exists()
 
+    def test_pure_replication_tls_renders_file_and_device_path(self, tmp_path, caplog):
+        """The replication CA is written to a file referenced by replication_device."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        material_value = "REPL_CA{{ unsafe }}"
+        device = "backend_id:target,san_ip:192.0.2.1,api_token:TOKEN,type:sync"
+        backend = context.PureBackendContext(
+            "pure01",
+            {
+                "volume_backend_name": "pure01",
+                "replication_device": device,
+                "replication_driver_ssl_cert": pydantic.SecretStr(material_value),
+            },
+        )
+        backends = context.CinderBackendContexts(["pure01"], {"pure01": backend})
+        service.render_context = Mock(return_value={"snap_paths": {"common": tmp_path}})
+        service.backend_contexts = Mock(return_value=backends)
+        service.template_files = Mock(return_value=[])
+
+        service.template(snap)
+
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        material_file = backend_dir / "pure01.replication.pem"
+        rendered_config = (backend_dir / "pure01.conf").read_text()
+        assert material_file.read_text() == material_value
+        assert material_file.stat().st_mode & 0o777 == 0o640
+        assert (
+            f"replication_device = {device},"
+            f"ssl_cert_verify:true,ssl_cert_path:{material_file}"
+        ) in rendered_config
+        assert "{{ snap_paths.common }}" not in rendered_config
+        assert "replication_driver_ssl_cert" not in rendered_config
+        assert material_value not in rendered_config
+        assert material_value not in caplog.text
+
+    def test_removing_pure_replication_tls_option_removes_file(self, tmp_path):
+        """Unsetting the replication CA removes its file and the device suffix."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        device = "backend_id:target,san_ip:192.0.2.1,api_token:TOKEN,type:sync"
+        backend_dir = tmp_path / context.ETC_CINDER_D_CONF_DIR
+        material_file = backend_dir / "pure01.replication.pem"
+        backend_dir.mkdir(parents=True)
+        material_file.write_text("OLD_REPL_CA")
+        backend = context.PureBackendContext(
+            "pure01",
+            {"volume_backend_name": "pure01", "replication_device": device},
+        )
+        backends = context.CinderBackendContexts(["pure01"], {"pure01": backend})
+        service.render_context = Mock(return_value={"snap_paths": {"common": tmp_path}})
+        service.backend_contexts = Mock(return_value=backends)
+        service.template_files = Mock(return_value=[])
+
+        service.template(snap)
+
+        rendered_config = (backend_dir / "pure01.conf").read_text()
+        assert not material_file.exists()
+        assert f"replication_device = {device}\n" in rendered_config
+        assert "ssl_cert" not in rendered_config
+
+    def test_replication_cert_cleanup_keeps_similarly_named_primary_cert(
+        self, tmp_path
+    ):
+        """Pruning replication certs must not delete another backend's cert."""
+        service = cinder_volume.GenericCinderVolume()
+        snap = Mock()
+        snap.paths.common = tmp_path
+        name = "foo_replication"
+        backend = context.PureBackendContext(
+            name,
+            {
+                "volume_backend_name": name,
+                "driver_ssl_cert": pydantic.SecretStr("PRIMARY_CA"),
+            },
+        )
+        backends = context.CinderBackendContexts([name], {name: backend})
+        service.render_context = Mock(return_value={"snap_paths": {"common": tmp_path}})
+        service.backend_contexts = Mock(return_value=backends)
+        service.template_files = Mock(return_value=[])
+        service.setup_dirs = Mock()
+        service.start_services = Mock()
+
+        service.configure(snap)
+
+        primary = tmp_path / context.ETC_CINDER_D_CONF_DIR / f"{name}.pem"
+        assert primary.read_text() == "PRIMARY_CA"
+
     def test_removing_netapp_tls_option_removes_material_file(self, tmp_path):
         """Removing one NetApp TLS value should unlink its managed file."""
         service = cinder_volume.GenericCinderVolume()
@@ -1316,3 +1405,68 @@ class TestGenericCinderVolume:
         )
 
         assert "cluster = cinder-cluster-a" not in rendered
+
+
+class TestSnapFeatures:
+    """Hooks advertise snap features, bound to the revision that set them."""
+
+    REVISION = "1234"
+
+    def _snap(self, tmp_path, revision=REVISION):
+        snap = Mock()
+        snap.paths.common = tmp_path
+        snap.revision = revision
+        return snap
+
+    @pytest.mark.parametrize("hook", ["install_hook", "configure_hook"])
+    def test_hooks_advertise_pure_replication_ssl_cert(self, hook, tmp_path):
+        """Charms compare this value with the installed snap revision."""
+        snap = self._snap(tmp_path)
+        with (
+            patch.object(cinder_volume.GenericCinderVolume, "install"),
+            patch.object(cinder_volume.GenericCinderVolume, "configure"),
+        ):
+            getattr(cinder_volume.GenericCinderVolume, hook)(snap)
+
+        snap.config.set.assert_any_call(
+            {"features.pure-replication-ssl-cert": self.REVISION}
+        )
+
+    @pytest.mark.parametrize("hook", ["install_hook", "configure_hook"])
+    def test_features_advertised_when_configuration_incomplete(self, hook, tmp_path):
+        """The marker is set even before the snap is fully configured."""
+        snap = self._snap(tmp_path)
+        with (
+            patch.object(
+                cinder_volume.GenericCinderVolume,
+                "install",
+                side_effect=error.CinderError("incomplete"),
+            ),
+            patch.object(
+                cinder_volume.GenericCinderVolume,
+                "configure",
+                side_effect=error.CinderError("incomplete"),
+            ),
+        ):
+            getattr(cinder_volume.GenericCinderVolume, hook)(snap)
+
+        snap.config.set.assert_any_call(
+            {"features.pure-replication-ssl-cert": self.REVISION}
+        )
+
+    @pytest.mark.parametrize(
+        "revision, expected",
+        [("1234", "1234"), (158, "158"), ("x1", "x1")],
+        ids=["store", "numeric", "try"],
+    )
+    def test_marker_is_revision_string(self, tmp_path, revision, expected):
+        """The value is always a string, including for snap try revisions."""
+        snap = self._snap(tmp_path, revision)
+        cinder_volume.set_snap_features(snap)
+
+        snap.config.set.assert_called_once_with(
+            {"features.pure-replication-ssl-cert": expected}
+        )
+        assert isinstance(
+            snap.config.set.call_args.args[0]["features.pure-replication-ssl-cert"], str
+        )
