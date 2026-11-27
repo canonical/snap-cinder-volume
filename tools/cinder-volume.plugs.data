@@ -1,0 +1,18 @@
+{
+  "block-devices": {
+    "allow-auto-connection": true,
+    "allow-installation": true
+  },
+  "dm-multipath": {
+    "allow-auto-connection": true,
+    "allow-installation": true
+  },
+  "iscsi-initiator": {
+    "allow-auto-connection": true,
+    "allow-installation": true
+  },
+  "nvme-control": {
+    "allow-auto-connection": true,
+    "allow-installation": true
+  }
+}
